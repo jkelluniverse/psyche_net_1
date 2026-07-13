@@ -127,9 +127,11 @@ describe("conferring rule (§6 — role-aware, not authorship alone)", () => {
     expect(isConferring(rec(1, { role: "SUPPORT" }), "BECOMING")).toBe(false);
     expect(isConferring(rec(1, { role: "ENACTMENT" }), "BECOMING")).toBe(true);
   });
-  it("for non-BECOMING nodes, SUPPORT confers and ENACTMENT/DECLARATION do not", () => {
+  it("D8 (v1.6): for non-BECOMING nodes, SUPPORT and ENACTMENT confer; DECLARATION never does", () => {
     expect(isConferring(rec(1, { role: "SUPPORT" }), "BELIEF")).toBe(true);
-    expect(isConferring(rec(1, { role: "ENACTMENT" }), "BELIEF")).toBe(false);
+    // Lived behavior is the MOST evidential class — zero-conferring it was
+    // the round-3 Critical (behavior-heavy journals silently starved).
+    expect(isConferring(rec(1, { role: "ENACTMENT" }), "BELIEF")).toBe(true);
     expect(isConferring(rec(1, { role: "DECLARATION" }), "BELIEF")).toBe(false);
   });
   it("an invalidated source never confers", () => {

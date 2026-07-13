@@ -26,6 +26,16 @@ export interface ExtractionPolicy {
   allowedNodeTypes: ExtractableNodeType[];
   practitionerRelationshipVerified: boolean;
   userConsentVersion: string;
+  /**
+   * D9 (round-3): explicit, NAMED consent line-items, server-derived from
+   * PractitionerClient.consentScope — never buried in general terms.
+   * betweenSessionExtraction: extraction stays relationship-scoped (the
+   * wedge depends on it), but the client consents to exactly that, by name.
+   * The client-facing REVEAL of newly-extracted WOUND nodes defaults to
+   * practitioner-mediated at the display layer (not this module's job);
+   * crisis classification runs on every entry regardless of any of this.
+   */
+  consentScope: { betweenSessionExtraction: boolean };
   policyVersion: string;
 }
 

@@ -433,7 +433,7 @@ model ExtractionRun {
   promptVersion   String
   ontologyVersion String
   gateVersion     String
-  contractVersion String    @default("v2.1")  // keep synced to CONTRACT_VERSION (round-2 C-7)
+  contractVersion String    @default("v2.2")  // keep synced to CONTRACT_VERSION (round-2 C-7)
   promptTemplateHash String?  // hash of the exact rendered template (audit; human version strings drift)
   policySnapshot  Json?     // the server-derived ExtractionPolicy in force for this run (audit)
   tokensIn        Int?

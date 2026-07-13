@@ -40,6 +40,7 @@ export function soloPolicy(): ExtractionPolicy {
     allowedNodeTypes: [...SOLO_ALLOWED_NODE_TYPES],
     practitionerRelationshipVerified: false,
     userConsentVersion: "consent-v1",
+    consentScope: { betweenSessionExtraction: true },
     policyVersion: "policy-v1",
   };
 }
@@ -50,6 +51,7 @@ export function practitionerPolicy(): ExtractionPolicy {
     allowedNodeTypes: [...PRACTITIONER_ALLOWED_NODE_TYPES],
     practitionerRelationshipVerified: true,
     userConsentVersion: "consent-v1",
+    consentScope: { betweenSessionExtraction: true },
     policyVersion: "policy-v1",
   };
 }

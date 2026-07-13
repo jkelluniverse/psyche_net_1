@@ -130,9 +130,9 @@ export interface GateConfig {
 }
 
 export const GATE_CONFIG_V1: GateConfig = {
-  gateVersion: "v1.5",
+  gateVersion: "v1.6",
   normalizationVersion: "v1",
-  massAlgorithmVersion: "v1",
+  massAlgorithmVersion: "v1.1",
   confidenceAlgorithmVersion: "v1.1",
   stateAlgorithmVersion: "v1",
   ontologyVersion: "v1",

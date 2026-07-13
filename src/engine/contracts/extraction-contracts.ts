@@ -14,7 +14,7 @@
 // where these values meet Prisma.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const CONTRACT_VERSION = "v2.1";
+export const CONTRACT_VERSION = "v2.2";
 
 // ── Closed enums (extensibility lives ONLY in ontologyKey — proposer §7.3) ──
 
@@ -315,6 +315,7 @@ export type RejectionReason =
   | "SOURCE_INVALIDATED"
   | "BELOW_MATERIALIZATION_THRESHOLD"
   | "HELD_HIGH_INFERENCE" // v2 (D1): distinct from an ordinary recurrence hold
+  | "WAITING_ENDPOINT" // v2.2 (A-2): edge held because its endpoint node is subthreshold
   | "EDGE_ENDPOINT_REJECTED"
   | "EMPTY_EVIDENCE_NON_HYPOTHESIS"
   | "AMBIGUOUS_QUOTE";
@@ -362,6 +363,7 @@ export const GATE_REJECTION_REASONS: readonly RejectionReason[] = [
   "SOURCE_INVALIDATED",
   "BELOW_MATERIALIZATION_THRESHOLD",
   "HELD_HIGH_INFERENCE",
+  "WAITING_ENDPOINT",
   "EDGE_ENDPOINT_REJECTED",
   "EMPTY_EVIDENCE_NON_HYPOTHESIS",
   "AMBIGUOUS_QUOTE",

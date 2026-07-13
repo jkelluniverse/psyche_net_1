@@ -520,9 +520,11 @@ export function gate(
           tempId: e.tempId,
           kind: "edge",
           stage: "GATE",
-          reason: waitingEndpoint || belowCausalThreshold
-            ? "BELOW_MATERIALIZATION_THRESHOLD"
-            : "HELD_HIGH_INFERENCE",
+          reason: waitingEndpoint
+            ? "WAITING_ENDPOINT"
+            : belowCausalThreshold
+              ? "BELOW_MATERIALIZATION_THRESHOLD"
+              : "HELD_HIGH_INFERENCE",
           detail: waitingEndpoint
             ? `an endpoint node is itself subthreshold — edge held (WAITING_ENDPOINT), re-evaluated when the endpoint materializes`
             : heldHighInference

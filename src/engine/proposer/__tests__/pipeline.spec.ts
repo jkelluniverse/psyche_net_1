@@ -124,6 +124,35 @@ describe("end-to-end: raw model output → real wrapper → real gate", () => {
     expect(result.acceptedNodes[0].mass).toBe(0);
   });
 
+  it("D8 keystone (v1.4): a behavior-heavy journal with correctly-labeled ENACTMENT evidence still materializes extracted nodes", async () => {
+    // Round-3 Critical: under the old `role === SUPPORT` rule, a model that
+    // CORRECTLY labeled lived behavior as ENACTMENT produced zero-conferring
+    // evidence on every extracted node — behavior-heavy journals silently
+    // starved while all tests stayed green. ENACTMENT now confers everywhere.
+    const modelOutput = JSON.stringify({
+      nodes: [
+        {
+          tempId: "n1",
+          type: "PATTERN",
+          label: "Staying calm in conflict",
+          evidence: [
+            { sourceEventId: "e2", quote: "I stayed calm", role: "ENACTMENT" },
+            { sourceEventId: "e3", quote: "Stayed calm again", role: "ENACTMENT" },
+          ],
+        },
+      ],
+      edges: [],
+    });
+    const stub = stubModel(modelOutput);
+    const run = await runProposer(input({ sources: [ENACT_1, ENACT_2] }), stub.call);
+    expect(run.status).toBe("complete");
+    const result = gate(run.output, sourceMap(ENACT_1, ENACT_2), { nodes: [], edges: [] }, [], NOW);
+    expect(result.acceptedNodes).toHaveLength(1); // materializes — not starved into shadow
+    expect(result.acceptedNodes[0].type).toBe("PATTERN");
+    expect(result.acceptedNodes[0].mass).toBeGreaterThan(0); // enactments confer
+    expect(result.acceptedNodes[0].state).toBe("ACTIVE");
+  });
+
   it("a DECLARATION-labeled quote confers nothing on an ordinary extracted node either", async () => {
     const modelOutput = JSON.stringify({
       nodes: [

@@ -36,4 +36,5 @@ This charter encodes the judgment used to reconcile dual-model spec reviews. The
 ## Exit criteria (when a spec is FINAL)
 - Both reviews return zero Critical/Tier-1 findings, OR three full rounds have run.
 - If capped at three rounds with Criticals outstanding: STOP and escalate to Jacob — never stamp final over an open Critical.
+- **Post-escalation exit (added by Jacob after proposer round 3): when the human approves fixes for the escalated Criticals, the standard exit is a TARGETED DIFF VERIFICATION — one fresh-context adversarial lane reviewing only the integration diff and its new tests — not a full round 4. The cap exists to stop infinite loops, not to force full-spec re-reviews of scoped diffs. Zero Criticals on the diff → stamp FINAL; any Critical → back to the human.**
 - On exit: bump to `vX.Y-FINAL`, write the cumulative changelog, commit, and proceed to build (tests first, per the spec's own test section).

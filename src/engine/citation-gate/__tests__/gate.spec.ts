@@ -1145,9 +1145,9 @@ describe("empty and versioned output", () => {
 
   it("every GateResult carries the full version stamp set (auditability)", () => {
     const result = gate(proposals(), sourceMap(), EMPTY_GRAPH, [], NOW);
-    expect(result.gateVersion).toBe("v1.5");
+    expect(result.gateVersion).toBe("v1.6");
     expect(result.normalizationVersion).toBe("v1");
-    expect(result.massAlgorithmVersion).toBe("v1");
+    expect(result.massAlgorithmVersion).toBe("v1.1");
     expect(result.confidenceAlgorithmVersion).toBe("v1.1");
     expect(result.stateAlgorithmVersion).toBe("v1");
     expect(result.ontologyVersion).toBe("v1");

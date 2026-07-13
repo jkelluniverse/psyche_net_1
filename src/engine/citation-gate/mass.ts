@@ -7,15 +7,20 @@ import type { EvidenceRecord, MassDerivation, NodeType } from "../contracts/extr
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * The conferring rule (spec §6) — NOT authorship alone:
+ * The conferring rule (spec §6, v1.6/D8) — NOT authorship alone:
  *
  *   conferring = (authorship === SELF)
  *              ∧ (source not invalidated)
- *              ∧ (BECOMING nodes: role === ENACTMENT; others: role === SUPPORT)
+ *              ∧ (BECOMING nodes: role === ENACTMENT; others: role !== DECLARATION)
  *
- * A becoming DECLARATION and practitioner-authored words attach for display
- * and provenance but confer nothing — restating a wish never ignites it
- * (LAW 3/4). Pass `nodeType = null` for edges (SUPPORT rule applies).
+ * D8 (round-3 Critical): ENACTMENT confers on EVERY node type — lived
+ * behavior is the most evidential class, and the old `role === SUPPORT` rule
+ * zero-conferred correctly-labeled enactments on extracted nodes, silently
+ * starving behavior-heavy journals. DECLARATION confers nowhere: a wish
+ * never charges anything, so a mislabel can still only UNDER-confer
+ * (restrict-never-create holds in every direction). Practitioner-authored
+ * words attach for display but confer nothing (LAW 3/4). Pass
+ * `nodeType = null` for edges (same non-BECOMING rule).
  */
 export function isConferring(
   e: Pick<EvidenceRecord, "authorship" | "role" | "sourceInvalidatedAt">,
@@ -23,7 +28,7 @@ export function isConferring(
 ): boolean {
   if (e.authorship !== "SELF") return false;
   if (e.sourceInvalidatedAt != null) return false;
-  return nodeType === "BECOMING" ? e.role === "ENACTMENT" : e.role === "SUPPORT";
+  return nodeType === "BECOMING" ? e.role === "ENACTMENT" : e.role !== "DECLARATION";
 }
 
 function recencyWeight(occurredAt: Date, now: Date, halfLifeDays: number): number {
