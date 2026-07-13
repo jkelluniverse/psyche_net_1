@@ -1,10 +1,10 @@
 # Citation Gate — Module Specification
 
-*Psyche-Net · the load-bearing wall · v1.2 · governs `/src/engine/citation-gate/`*
+*Psyche-Net · the load-bearing wall · v1.3 · governs `/src/engine/citation-gate/`*
 
-> **v1.2 changelog (implementation-surfaced contract fixes, from the first Claude Code build):** building the gate exposed two spec inconsistencies that survived two review rounds — now corrected. (1) `ProposedEvidence` (§3.1) now carries `offsetHint`, `role`, and `polarity` — the §5 tie-break and §6 conferring rule *described* these behaviors but the input interface didn't thread them through. (2) `GateResult.shadowBuffer` (§3.3) is now `ShadowCandidate[]`, not the literal `ProposedNode[]` — recurrence (`timesSeen`/`distinctSources`) can't accumulate across passes on a raw proposal. Also added the PII-redaction span-preservation trap note (§5, OUT of v1). Reference build: 75 tests green, keystone rejection test + NFKC span test #11 (with genuinely length-changing fixtures) passing, mutation-tested, DB CHECK constraints verified against live Postgres 16.
+> **v1.3 changelog (proposer-review round — the seam fix):** both reviewers found the proposer→gate seam break: `role`/`polarity` were in `ProposedEvidence` (v1.2) but were **dropped at `VerifiedEvidence`**, and §4's algorithm still computed `conferring` from authorship alone — so the becoming-ignition fix was disconnected end-to-end. Fixed: `VerifiedEvidence` now carries `role`/`polarity` through; §4 computes conferring per the full §6 rule; ignition is explicitly **ENACTMENT-role with a deterministic ≥2-spans/≥2-events threshold** (a single mislabeled declaration cannot ignite); `offsetHint` is explicitly **non-authoritative** (find all matches first; hint = tie-break only, never a locator, never creates or rejects evidence). **NEW REQUIREMENT — one canonical contract module:** all shared types (`ProposedEvidence`, `ProposedNode`, `ProposedEdge`, `ProposerOutput`, `VerifiedEvidence`, `GateResult`, `ShadowCandidate`) live in ONE versioned source file (`/src/engine/contracts/extraction-contracts.ts`), imported by both proposer and gate; `contractVersion` is stamped on every `ExtractionRun`. The two module specs *describe* the contracts; the code file *is* the contract. This round's root cause was maintaining contracts in two documents — that ends here.
 >
-> *v1.1 changelog (Round A):* §1.1 honest-scope; gate signature takes priorGraph/shadowBuffer/now; conferring role dimension; invalidation-aware mass; NFKC span-mapping + multi-occurrence hardening; tests 11–15; AMBIGUOUS_QUOTE; proposer-blinding invariant.
+> *v1.2:* implementation-surfaced fixes (offsetHint/role/polarity into ProposedEvidence; shadowBuffer → ShadowCandidate[]; PII-span trap note). *v1.1:* honest-scope §1.1; gate signature; role-aware conferring; invalidation-aware mass; NFKC + tie-break hardening; tests 11–15; blinding invariant.
 
 > This is the single most important module in the codebase. It is the deterministic trust boundary between what an LLM *claims* about a person and what becomes true on their map. Build it first, test it first, and never let anything write graph state that bypasses it. If this module is correct, LAW 1 (evidence mandate) and LAW 2 (citation gate) hold structurally rather than by good intentions.
 
@@ -144,7 +144,12 @@ interface VerifiedEvidence {
   spanStart: number;       // index in source.content where quote was found
   spanEnd: number;
   occurredAt: Date;        // copied from the source (for temporal honesty)
-  conferring: boolean;     // true only if source.authorship === SELF (LAW 3/4)
+  role: EvidenceRole;      // carried through from ProposedEvidence (default SUPPORT).
+                           // REQUIRED downstream: §6's conferring rule and becoming-ignition
+                           // read this. Dropping it here disconnects the becoming fix.
+  polarity: EvidencePolarity; // carried through (default SUPPORTING); feeds the state
+                           // machine (QUESTIONED/LOOSENING/CONTRADICTED) under §1.1's guards.
+  conferring: boolean;     // authorship AND role aware — see §6. NOT authorship alone.
 }
 
 interface AcceptedNode {
@@ -201,7 +206,7 @@ For each proposed node/edge, for each `ProposedEvidence`:
 1. **Resolve the source.** Look up `sourceEventId` in the source map. Missing → reject item with `SOURCE_NOT_FOUND`. Present but `invalidatedAt != null` → `SOURCE_INVALIDATED`.
 2. **Normalize both strings identically.** Apply the SAME normalization to the quote and to the source content before comparison (see §5). Store the span using indices into the *original* content, not the normalized copy.
 3. **Locate the quote.** Search for the normalized quote as a substring of the normalized source. Not found → reject that evidence with `QUOTE_NOT_FOUND`.
-4. **Record the span.** On a hit, map the match back to `[spanStart, spanEnd]` in the original content and build a `VerifiedEvidence`, copying `occurredAt` from the source and setting `conferring = (source.authorship === SELF)`.
+4. **Record the span.** On a hit, map the match back to `[spanStart, spanEnd]` in the original content and build a `VerifiedEvidence`, copying `occurredAt` from the source, carrying `role` and `polarity` through from the proposal (defaults SUPPORT/SUPPORTING), and computing `conferring` per the **full §6 rule — authorship AND role AND invalidation aware**, never authorship alone. (A SELF-authored becoming DECLARATION is verified but non-conferring.)
 
 Then, per item:
 - **Nodes:** partition evidence into verified vs. unverified. Drop the unverified. If the node's provenance is `EXTRACTED` and it has **zero** verified evidence → reject `EMPTY_EVIDENCE_NON_HYPOTHESIS`. If provenance is `LENS`/`BECOMING`/`PRACTITIONER`, zero evidence is *allowed* — it becomes a `HYPOTHESIS` node at mass 0 (LAW 3).
@@ -229,7 +234,7 @@ The proposer will rarely reproduce a quote byte-for-byte. Over-strict matching r
 
 **Span mapping (the highest-probability production bug in the gate — do not hand-wave this):** NFKC normalization *changes string length* (ligatures ﬁ→fi, full-width→half-width, some combining forms). So the naive "normalize → find index in normalized → slice the ORIGINAL at that index" is **wrong** the moment any earlier character normalized to a different length. It passes every ASCII test and then returns a corrupt span for the one entry containing a ligature or pasted full-width text — and that corrupt span is exactly what powers tap-for-evidence. The requirement is therefore specific: build an **explicit index map** from normalized positions back to original positions (or do a two-pass relocate that re-finds the quote in the original), so `spanStart/spanEnd` always index the ORIGINAL `content`. This gets a dedicated test with **non-ASCII fixtures** (ligatures, full-width, combining accents, emoji), not just ASCII.
 
-**Multiple-occurrence tie-break:** when the normalized quote appears more than once in the source (e.g. "i feel" five times), substring search alone picks an arbitrary match and tap-for-evidence lands on the wrong sentence. Rule for v1: the proposer supplies an approximate character offset with each quote; the gate selects the occurrence nearest that offset. If no offset is supplied, require the quote to be long/unique enough to occur once, else reject as ambiguous. Documented and tested.
+**Multiple-occurrence tie-break (the hint is never a locator):** when the normalized quote appears more than once in the source, the gate **finds ALL verbatim matches first**, then uses the proposer's `offsetHint` only to choose among them (nearest match wins). The hint is model-counted and will often be wildly off — a mismatched hint never rejects a quote that verifiably exists, and the hint can never *create* evidence (the quote must still match verbatim regardless). If no hint is supplied and the quote is ambiguous (multiple matches), reject `AMBIGUOUS_QUOTE` rather than guess. If a hint is supplied but all matches are implausibly far, fall back to the first match and lower confidence. Documented and tested.
 
 **PII redaction and spans (a trap for later — OUT of v1, noted now so it isn't wired in wrong).** A tempting privacy feature is to redact PII locally before sending text to a cloud proposer. Done naively, this *shifts character offsets* and breaks the gate's core guarantee: the proposer would cite spans in the redacted text that no longer map to the original, so the gate can't validate against the source. If PII handling is ever added, it must use **deterministic, reversible placeholder mapping** (stable tokens, offset map stored locally/under a user key) so that: the proposer cites placeholder text, the gate validates against a redacted *mirror*, and a local mapping resolves evidence back to exact original spans. Privacy preprocessing must never weaken the evidence mandate. For v1 this is entirely OUT of scope — the point of this note is that no one should add span-shifting redaction without solving span-resolvability first.
 
@@ -283,7 +288,7 @@ Hypothesis nodes start at a low confidence floor (e.g. 0.15) and rise only as li
 Given prior state + the new validated evidence delta:
 - `HYPOTHESIS` → `ACTIVE` when conferring evidence first clears the materialization threshold (lens/becoming "confirmed").
 - `HYPOTHESIS(lens)` → `CONTRADICTED` when conferring evidence opposes it (opposition detection is itself an evidence-tagged signal from the proposer, then gate-verified like any quote).
-- `BECOMING` → `IGNITED` when conferring evidence for the designed quality clears an ignition threshold (stricter than materialization; e.g. ≥ 3 spans across ≥ 3 events, weighted toward spontaneous mentions).
+- `BECOMING` → `IGNITED` only when **ENACTMENT-role** conferring evidence clears the deterministic ignition threshold: **≥ 2 ENACTMENT spans from ≥ 2 distinct source events** (v1 config; stricter than materialization). DECLARATION-role evidence never counts toward ignition regardless of quantity — restating the wish cannot ignite it. Because `role` is model-assigned and unverifiable (§1.1), this recurrence threshold is the deterministic guard that makes a *single* mislabeled declaration unable to fire a ceremonial, high-visibility ignition; the proposer is additionally instructed to default to DECLARATION when uncertain (conservative bias against ignition).
 - `ACTIVE` → `LOOSENING` when countervailing evidence accumulates against a previously-massive node.
 - `LOOSENING` → `TRANSMUTATION_CANDIDATE` → `INTEGRATED` along the documented change arc.
 - any → `DORMANT` when a node has substantial historical evidence but no recent conferring evidence (present mass falls below the dormancy floor) — the honest "documented then, quiet now."
@@ -342,4 +347,4 @@ Maintain a small **ground-truth eval corpus**: synthetic journals with hand-labe
 
 Every distinctive claim Psyche-Net makes — "nothing is true until your life says so," "we show you your chart being wrong," "the instrument that shows what it doesn't know," the entire trust and safety story, the patent framing — reduces to this: *a deterministic gate that only lets validated, self-authored evidence confer reality on the map.* The beautiful physics, the constellation, the ceremonies are all downstream. If the gate is honest, the product is honest. Build it first. Test it hardest. Never route around it.
 
-*— End of citation gate spec v1.2. Provisional and revisable, like everything here — but the nine laws it enforces are not.*
+*— End of citation gate spec v1.3. Provisional and revisable, like everything here — but the nine laws it enforces are not.*
