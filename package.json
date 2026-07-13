@@ -10,7 +10,8 @@
     "db:migrate": "prisma migrate deploy",
     "postinstall": "prisma generate",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db": "vitest run src/engine/graph-writer"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
