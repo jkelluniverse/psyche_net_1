@@ -2,7 +2,7 @@
 // Arithmetic, never the model. Every value carries its derivation.
 
 import type { GateConfig } from "./config";
-import type { EvidenceRecord, MassDerivation, NodeType } from "./types";
+import type { EvidenceRecord, MassDerivation, NodeType } from "../contracts/extraction-contracts";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

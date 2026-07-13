@@ -7,7 +7,7 @@ import { computeMass, isConferring } from "../mass";
 import { computeConfidence } from "../confidence";
 import { GATE_CONFIG_V1 } from "../config";
 import { NOW, daysAgo } from "./fixtures";
-import type { EvidenceRecord } from "../types";
+import type { EvidenceRecord } from "../../contracts/extraction-contracts";
 
 function rec(daysOld: number, opts: Partial<EvidenceRecord> = {}): EvidenceRecord {
   return {

@@ -32,10 +32,25 @@ export interface GateConfig {
     minDistinctSources: number;
   };
 
-  /** Ignition for BECOMING nodes — stricter than materialization (spec §6.4). */
+  /**
+   * Ignition for BECOMING nodes (spec v1.3 §6.4): ENACTMENT-role conferring
+   * evidence only, ≥2 spans from ≥2 distinct events. Stricter than
+   * materialization because only enactments count — a single mislabeled
+   * declaration can never fire a ceremonial ignition.
+   */
   ignition: {
     minConferringSpans: number;
     minDistinctSources: number;
+  };
+
+  /** Quote location (spec v1.3 §5 — the hint is never a locator). */
+  locate: {
+    /**
+     * When a quote matches multiple times and an offsetHint is supplied but
+     * every match is farther than this from the hint, the gate falls back to
+     * the FIRST match and lowers confidence (never rejects a real quote).
+     */
+    offsetHintPlausibilityRadiusChars: number;
   };
 
   confidence: {
@@ -45,6 +60,8 @@ export interface GateConfig {
     ontologyNoveltyPenalty: number;
     /** Hypothesis nodes start here and rise only with lived evidence (LAW 5). */
     hypothesisFloor: number;
+    /** v1.3: applied when any evidence needed the far-hint first-match fallback. */
+    hintFallbackPenalty: number;
   };
 
   /**
@@ -87,10 +104,10 @@ export interface GateConfig {
 }
 
 export const GATE_CONFIG_V1: GateConfig = {
-  gateVersion: "v1",
+  gateVersion: "v1.3",
   normalizationVersion: "v1",
   massAlgorithmVersion: "v1",
-  confidenceAlgorithmVersion: "v1",
+  confidenceAlgorithmVersion: "v1.1",
   stateAlgorithmVersion: "v1",
   ontologyVersion: "v1",
 
@@ -104,8 +121,12 @@ export const GATE_CONFIG_V1: GateConfig = {
   },
 
   ignition: {
-    minConferringSpans: 3,
-    minDistinctSources: 3,
+    minConferringSpans: 2,
+    minDistinctSources: 2,
+  },
+
+  locate: {
+    offsetHintPlausibilityRadiusChars: 400,
   },
 
   confidence: {
@@ -114,6 +135,7 @@ export const GATE_CONFIG_V1: GateConfig = {
     contradictionPenalty: 0.2,
     ontologyNoveltyPenalty: 0.25,
     hypothesisFloor: 0.15,
+    hintFallbackPenalty: 0.1,
   },
 
   stateThresholds: {

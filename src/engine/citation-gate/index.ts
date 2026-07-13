@@ -13,4 +13,4 @@ export { computeMass, isConferring } from "./mass";
 export { computeConfidence } from "./confidence";
 export { nextState } from "./state";
 export type { StateContext } from "./state";
-export * from "./types";
+export * from "../contracts/extraction-contracts";

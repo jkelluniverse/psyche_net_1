@@ -35,7 +35,7 @@ import type {
   ShadowCandidate,
   SourceRecord,
   VerifiedEvidence,
-} from "./types";
+} from "../contracts/extraction-contracts";
 
 interface EvidenceFailure {
   reason: RejectionReason;
@@ -146,7 +146,10 @@ export function gate(
         continue;
       }
       const normQ = normalizeQuote(e.quote);
-      const hit = locateQuote(normQ, normalizedSource(source), e.offsetHint);
+      const hit = locateQuote(normQ, normalizedSource(source), {
+        offsetHint: e.offsetHint,
+        hintPlausibilityRadiusChars: config.locate.offsetHintPlausibilityRadiusChars,
+      });
       if (hit.kind === "not_found") {
         failures.push({
           reason: "QUOTE_NOT_FOUND",
@@ -177,6 +180,7 @@ export function gate(
         role,
         polarity: e.polarity ?? "SUPPORTING",
         normalizationVersion: config.normalizationVersion,
+        ...(hit.hintFallback ? { hintFallback: true } : {}),
       });
     }
     return { verified: dedupeVerified(verified), failures };
@@ -287,7 +291,9 @@ export function gate(
       config,
     );
     const ontologyNovel = !!p.ontologyKey && !knownOntologyKeys.has(p.ontologyKey);
-    const confR = computeConfidence(combined, { ontologyNovel }, config);
+    // v1.3 §5: any far-hint fallback among this pass's evidence lowers confidence.
+    const hintFallback = verified.some((v) => v.hintFallback === true);
+    const confR = computeConfidence(combined, { ontologyNovel, hintFallback }, config);
     // LAW 5: an uncharged hypothesis is an explicit low number, never null.
     const confidence =
       stateR.state === "HYPOTHESIS" ? config.confidence.hypothesisFloor : confR.value;
@@ -342,7 +348,11 @@ export function gate(
     // low-confidence hypothesis edges (spec §4).
     const records = verified.map(toRecord);
     const strengthR = computeMass(records, null, now, config);
-    const confR = computeConfidence(records, { ontologyNovel: false }, config);
+    const confR = computeConfidence(
+      records,
+      { ontologyNovel: false, hintFallback: verified.some((v) => v.hintFallback === true) },
+      config,
+    );
     const confidence =
       verified.length === 0 ? config.confidence.hypothesisFloor : confR.value;
 

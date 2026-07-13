@@ -4,7 +4,7 @@
 // never null.
 
 import type { GateConfig } from "./config";
-import type { ConfidenceDerivation, EvidenceRecord } from "./types";
+import type { ConfidenceDerivation, EvidenceRecord } from "../contracts/extraction-contracts";
 
 function clamp01(x: number): number {
   return Math.min(1, Math.max(0, x));
@@ -14,16 +14,20 @@ function clamp01(x: number): number {
  * confidence = clamp01( base
  *                     + perExtraSource * max(0, distinctSupportingSources - 1)
  *                     - contradictionPenalty * contradictionSignal
- *                     - noveltyPenalty * ontologyNovelty )
+ *                     - noveltyPenalty * ontologyNovelty
+ *                     - hintFallbackPenalty * hintFallbackSignal )   // v1.3 §5
  *
  * contradictionSignal is the fraction of contributing distinct sources that
- * are countervailing — graded, bounded, explainable. The corroboration term
- * is floored at 0 so zero-evidence hypotheses aren't double-penalized below
- * the hypothesis floor (the gate assigns the floor for HYPOTHESIS state).
+ * are countervailing — graded, bounded, explainable. hintFallbackSignal is 1
+ * when any contributing evidence was located via the far-hint first-match
+ * fallback (the span is verbatim-valid but the occurrence choice is less
+ * certain). The corroboration term is floored at 0 so zero-evidence
+ * hypotheses aren't double-penalized below the hypothesis floor (the gate
+ * assigns the floor for HYPOTHESIS state).
  */
 export function computeConfidence(
   evidence: EvidenceRecord[],
-  ctx: { ontologyNovel: boolean },
+  ctx: { ontologyNovel: boolean; hintFallback?: boolean },
   config: GateConfig,
 ): { value: number; derivation: ConfidenceDerivation } {
   const live = evidence.filter(
@@ -39,13 +43,15 @@ export function computeConfidence(
   const contributing = supportingSources + countervailingSources;
   const contradictionSignal = contributing === 0 ? 0 : countervailingSources / contributing;
   const ontologyNovelty = ctx.ontologyNovel ? 1 : 0;
+  const hintFallbackSignal = ctx.hintFallback ? 1 : 0;
 
   const c = config.confidence;
   const value = clamp01(
     c.base +
       c.corroborationPerExtraSource * Math.max(0, supportingSources - 1) -
       c.contradictionPenalty * contradictionSignal -
-      c.ontologyNoveltyPenalty * ontologyNovelty,
+      c.ontologyNoveltyPenalty * ontologyNovelty -
+      c.hintFallbackPenalty * hintFallbackSignal,
   );
 
   return {
@@ -56,6 +62,7 @@ export function computeConfidence(
       distinctSourceCount: supportingSources,
       contradictionSignal,
       ontologyNovelty,
+      hintFallbackSignal,
     },
   };
 }

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { nextState } from "../state";
 import { GATE_CONFIG_V1, type GateConfig } from "../config";
 import { NOW, daysAgo } from "./fixtures";
-import type { EvidenceRecord, NodeState, NodeType, Provenance } from "../types";
+import type { EvidenceRecord, NodeState, NodeType, Provenance } from "../../contracts/extraction-contracts";
 
 const cfg = GATE_CONFIG_V1;
 
@@ -78,8 +78,19 @@ describe("test 8 — state machine transitions", () => {
     const declarations = (n: number) =>
       Array.from({ length: n }, (_, i) => rec(i + 1, { id: `d${i}`, role: "DECLARATION" }));
 
+    // v1.3 deterministic ignition threshold: >=2 ENACTMENT spans, >=2 events.
     expect(next("HYPOTHESIS", enactments(3), { type: "BECOMING", provenance: "BECOMING" }).state).toBe("IGNITED");
-    expect(next("HYPOTHESIS", enactments(2), { type: "BECOMING", provenance: "BECOMING" }).state).toBe("HYPOTHESIS");
+    expect(next("HYPOTHESIS", enactments(2), { type: "BECOMING", provenance: "BECOMING" }).state).toBe("IGNITED");
+    // A SINGLE enactment — even a mislabeled one — can never fire ignition.
+    expect(next("HYPOTHESIS", enactments(1), { type: "BECOMING", provenance: "BECOMING" }).state).toBe("HYPOTHESIS");
+    // Two spans from ONE event is not recurrence.
+    expect(
+      next(
+        "HYPOTHESIS",
+        [rec(1, { id: "same", role: "ENACTMENT" }), rec(2, { id: "same", role: "ENACTMENT" })],
+        { type: "BECOMING", provenance: "BECOMING" },
+      ).state,
+    ).toBe("HYPOTHESIS");
     // Declarations NEVER ignite, no matter how many (§6 conferring rule).
     expect(next("HYPOTHESIS", declarations(8), { type: "BECOMING", provenance: "BECOMING" }).state).toBe("HYPOTHESIS");
     // A becoming seed never takes the generic ACTIVE shortcut.

@@ -589,6 +589,57 @@ describe("test 12 — multi-occurrence tie-break", () => {
     expect(content.slice(found.spanStart, found.spanEnd)).toBe("i feel small");
   });
 
+  it("an implausibly far hint falls back to the FIRST occurrence with lowered confidence — never rejects", () => {
+    const sources = sourceMap(src("e1", content), src("e2", "i feel small."));
+    const mk = (offsetHint: number) =>
+      gate(
+        proposals([
+          node("n1", "Feeling small", [
+            ev("e1", "i feel small", { offsetHint }),
+            ev("e2", "i feel small"),
+          ]),
+        ]),
+        sources,
+        EMPTY_GRAPH,
+        [],
+        NOW,
+      );
+    // Hint wildly beyond the source (model-counted offsets are often wrong).
+    const farResult = mk(10_000);
+    expect(farResult.acceptedNodes).toHaveLength(1); // a wrong hint never rejects a real quote
+    const found = farResult.acceptedNodes[0].evidence.find((e) => e.sourceEventId === "e1")!;
+    expect(found.spanStart).toBe(first); // falls back to the FIRST occurrence
+    expect(found.hintFallback).toBe(true);
+    // …and the fallback costs confidence relative to a plausible hint.
+    const nearResult = mk(second + 3);
+    expect(farResult.acceptedNodes[0].confidence).toBeLessThan(
+      nearResult.acceptedNodes[0].confidence,
+    );
+    expect(farResult.acceptedNodes[0].derivation.confidence.hintFallbackSignal).toBe(1);
+  });
+
+  it("a hint on a UNIQUE quote is irrelevant — never rejects (the hint is not a locator)", () => {
+    const sources = sourceMap(
+      src("e1", "the shame sits under everything, i think."),
+      src("e2", "that same shame sits under everything i do."),
+    );
+    const result = gate(
+      proposals([
+        node("n1", "Shame underneath", [
+          ev("e1", "shame sits under everything", { offsetHint: 999_999 }),
+          ev("e2", "shame sits under everything i do"),
+        ]),
+      ]),
+      sources,
+      EMPTY_GRAPH,
+      [],
+      NOW,
+    );
+    expect(result.acceptedNodes).toHaveLength(1);
+    const e1 = result.acceptedNodes[0].evidence.find((e) => e.sourceEventId === "e1")!;
+    expect(e1.hintFallback).toBeUndefined(); // single match: hint never consulted
+  });
+
   it("rejects an ambiguous quote with no offset — never guesses", () => {
     const sources = sourceMap(src("e1", content));
     const result = gate(
@@ -673,7 +724,7 @@ describe("test 14 — becoming-conferring (a declaration never self-ignites)", (
     expect(seed.state).toBe("HYPOTHESIS"); // never IGNITED by declarations
   });
 
-  it("ENACTMENT evidence (SELF) charges it toward ignition", () => {
+  it("ENACTMENT evidence (SELF) charges it toward ignition at the deterministic >=2-spans/>=2-events threshold", () => {
     const prior = {
       nodes: [
         existingNode(
@@ -712,7 +763,37 @@ describe("test 14 — becoming-conferring (a declaration never self-ignites)", (
     const charged = result.acceptedNodes[0];
     expect(charged.existingNodeId).toBe("becoming-1");
     expect(charged.mass).toBeGreaterThan(0);
-    expect(charged.state).toBe("IGNITED"); // 3 enactment spans across 3 events
+    expect(charged.state).toBe("IGNITED"); // >=2 enactment spans across >=2 events (v1.3)
+  });
+
+  it("a single enactment (even a mislabeled declaration) can never ignite", () => {
+    const prior = {
+      nodes: [
+        existingNode(
+          "becoming-1",
+          "Calm under conflict",
+          [evidenceRecord("w1", "I want to stay calm under conflict", { role: "DECLARATION" })],
+          { provenance: "BECOMING", type: "BECOMING", state: "HYPOTHESIS" },
+        ),
+      ],
+      edges: [],
+    };
+    const sources = sourceMap(src("a1", enact1, { occurredAt: daysAgo(10) }));
+    const result = gate(
+      proposals([
+        node(
+          "b1",
+          "Calm under conflict",
+          [ev("a1", "I stayed calm", { role: "ENACTMENT" })],
+          { provenance: "BECOMING", type: "BECOMING" },
+        ),
+      ]),
+      sources,
+      prior,
+      [],
+      NOW,
+    );
+    expect(result.acceptedNodes[0].state).toBe("HYPOTHESIS"); // one span, one event: no ignition
   });
 });
 
@@ -784,10 +865,10 @@ describe("empty and versioned output", () => {
 
   it("every GateResult carries the full version stamp set (auditability)", () => {
     const result = gate(proposals(), sourceMap(), EMPTY_GRAPH, [], NOW);
-    expect(result.gateVersion).toBe("v1");
+    expect(result.gateVersion).toBe("v1.3");
     expect(result.normalizationVersion).toBe("v1");
     expect(result.massAlgorithmVersion).toBe("v1");
-    expect(result.confidenceAlgorithmVersion).toBe("v1");
+    expect(result.confidenceAlgorithmVersion).toBe("v1.1");
     expect(result.stateAlgorithmVersion).toBe("v1");
     expect(result.ontologyVersion).toBe("v1");
   });

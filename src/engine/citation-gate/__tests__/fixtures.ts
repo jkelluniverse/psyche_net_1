@@ -14,7 +14,7 @@ import type {
   Provenance,
   ProposerOutput,
   SourceRecord,
-} from "../types";
+} from "../../contracts/extraction-contracts";
 
 /** The fixed "now" every test computes against. */
 export const NOW = new Date("2026-07-01T12:00:00.000Z");

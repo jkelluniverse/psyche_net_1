@@ -12,7 +12,7 @@ import type {
   NodeType,
   Provenance,
   StateDerivation,
-} from "./types";
+} from "../contracts/extraction-contracts";
 
 export interface StateContext {
   nodeType: NodeType;

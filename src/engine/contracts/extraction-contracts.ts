@@ -1,10 +1,22 @@
-// Citation gate — data contracts (spec §3).
+// ═══════════════════════════════════════════════════════════════════════════
+// THE CANONICAL EXTRACTION CONTRACTS (gate spec v1.3 §3 · proposer spec v1.1)
+//
+// All types shared across the extraction pipeline live in THIS file and only
+// this file, imported by both the proposer and the citation gate. The two
+// module specs *describe* these contracts; this code file *is* the contract.
+// `CONTRACT_VERSION` is stamped on every ExtractionRun so any persisted
+// proposal can be replayed against the exact contract it spoke.
 //
 // These types deliberately mirror the Prisma enums as string-literal unions
 // rather than importing @prisma/client: the gate is the deterministic trust
 // boundary and must stay pure, dependency-free, and testable without a
-// generated client or a database. The graph writer (outside this module) is
+// generated client or a database. The graph writer (outside the engine) is
 // where these values meet Prisma.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const CONTRACT_VERSION = "v1";
+
+// ── Closed enums (extensibility lives ONLY in ontologyKey — proposer §7.3) ──
 
 export type NodeType =
   | "WOUND"
@@ -44,7 +56,19 @@ export type NodeState =
   | "CONTRADICTED"
   | "DORMANT";
 
-// ── Input from the proposer (untrusted, spec §3.1) ──────────────────────────
+/**
+ * Inference distance (proposer spec §8): a valid quote does not prove
+ * semantic support. Model-assigned (soft, like polarity); downstream rules
+ * bias toward restraint (HIGH_INFERENCE_INTERPRETATION never auto-
+ * materializes). Telemetry + threshold input, never truth.
+ */
+export type InferenceDistance =
+  | "DIRECT_DECLARATION"
+  | "DIRECT_BEHAVIOR"
+  | "LOW_INFERENCE_PATTERN"
+  | "HIGH_INFERENCE_INTERPRETATION";
+
+// ── Input from the proposer (untrusted — gate spec §3.1) ────────────────────
 
 export interface ProposedEvidence {
   sourceEventId: string;
@@ -52,14 +76,26 @@ export interface ProposedEvidence {
   quote: string;
   /**
    * Approximate character offset of the quote in the ORIGINAL source content.
-   * Required to disambiguate when the quote occurs more than once (§5
-   * multi-occurrence tie-break); without it an ambiguous quote is rejected.
+   * NON-AUTHORITATIVE (v1.3): the gate finds ALL verbatim matches first and
+   * uses the hint only as a tie-break among them. A wrong hint never rejects
+   * a quote that verifiably exists and can never create evidence. Absent →
+   * the quote must be unique or is rejected AMBIGUOUS_QUOTE.
    */
   offsetHint?: number;
-  /** Model-assigned, untrusted (spec §1.1). Defaults to SUPPORT. */
+  /**
+   * Model-assigned, untrusted (§1.1). Defaults to SUPPORT. A BECOMING seed's
+   * originating wish is DECLARATION and confers NO mass; only ENACTMENT
+   * charges toward ignition. Proposer bias: when uncertain, DECLARATION.
+   */
   role?: EvidenceRole;
-  /** Model-assigned, untrusted (spec §1.1). Defaults to SUPPORTING. */
+  /** Model-assigned, untrusted (§1.1). Defaults to SUPPORTING. */
   polarity?: EvidencePolarity;
+  /**
+   * One bounded sentence of why this quote supports the item. For evaluation
+   * and human review ONLY; never displayed as truth; never stored as evidence
+   * (proposer spec §6).
+   */
+  evidenceRationale?: string;
 }
 
 export interface ProposedNode {
@@ -70,6 +106,10 @@ export interface ProposedNode {
   ontologyKey?: string;
   /** May be empty for pure hypothesis seeds (LAW 3). */
   evidence: ProposedEvidence[];
+  /** Proposer §8 classification; HIGH_INFERENCE never auto-materializes. */
+  inferenceDistance?: InferenceDistance;
+  /** Telemetry ONLY (proposer §11): contributes zero to mass or confidence. */
+  modelReportedConfidence?: number;
 }
 
 export interface ProposedEdge {
@@ -79,6 +119,8 @@ export interface ProposedEdge {
   targetTempId: string;
   type: EdgeType;
   evidence: ProposedEvidence[];
+  inferenceDistance?: InferenceDistance;
+  modelReportedConfidence?: number;
 }
 
 export interface ProposerOutput {
@@ -86,7 +128,20 @@ export interface ProposerOutput {
   edges: ProposedEdge[];
 }
 
-// ── The source lookup (spec §3.2) ────────────────────────────────────────────
+/**
+ * Discriminated endpoint reference used at the MODEL-OUTPUT layer (proposer
+ * spec §3) to kill tempId/nodeId namespace collisions. The proposer's
+ * edge-ref guard resolves NodeRef → the plain string endpoints of the
+ * canonical ProposedEdge above before anything reaches the gate.
+ * (Surfaced spec seam: gate spec §3.1 keeps string endpoints; proposer spec
+ * §3 introduces NodeRef. Resolution: NodeRef is the raw-model shape; the
+ * canonical contract keeps strings.)
+ */
+export type NodeRef =
+  | { kind: "PROPOSED"; tempId: string }
+  | { kind: "EXISTING"; nodeId: string };
+
+// ── The source lookup (gate spec §3.2) ──────────────────────────────────────
 
 export interface SourceRecord {
   id: string;
@@ -98,7 +153,7 @@ export interface SourceRecord {
   invalidatedAt?: Date | null;
 }
 
-// ── Prior graph state (spec §3.1a — the gate is pure over ALL its inputs) ───
+// ── Prior graph state (gate spec §3.1a — pure function of ALL inputs) ───────
 
 /**
  * A previously persisted, validated Evidence row as the gate needs to see it
@@ -141,7 +196,7 @@ export interface GraphSnapshot {
   edges: ExistingEdge[];
 }
 
-// ── Verified output (spec §3.3) ──────────────────────────────────────────────
+// ── Verified output (gate spec v1.3 §3.3) ───────────────────────────────────
 
 export interface VerifiedEvidence {
   sourceEventId: string;
@@ -158,14 +213,26 @@ export interface VerifiedEvidence {
   /** Copied from the source, so cached (shadow) evidence stays arithmetic-correct. */
   authorship: Authorship;
   /**
+   * Carried through from ProposedEvidence (default SUPPORT). REQUIRED
+   * downstream: §6's conferring rule and becoming-ignition read this.
+   * Dropping it here disconnects the becoming fix (the v1.2→v1.3 seam bug).
+   */
+  role: EvidenceRole;
+  /** Carried through (default SUPPORTING); feeds the state machine under §1.1 guards. */
+  polarity: EvidencePolarity;
+  /**
    * conferring = authorship SELF ∧ source not invalidated ∧ role rule
-   * (ENACTMENT for BECOMING nodes, SUPPORT otherwise) — spec §6.
-   * Only conferring, SUPPORTING-polarity evidence contributes to mass.
+   * (ENACTMENT for BECOMING nodes, SUPPORT otherwise) — §6. NOT authorship
+   * alone. Only conferring, SUPPORTING-polarity evidence contributes to mass.
    */
   conferring: boolean;
-  role: EvidenceRole;
-  polarity: EvidencePolarity;
   normalizationVersion: string;
+  /**
+   * v1.3 far-hint fallback (§5): set when the quote matched multiple times
+   * and the supplied offsetHint was implausibly far from every match, so the
+   * gate fell back to the first occurrence. Lowers node confidence.
+   */
+  hintFallback?: boolean;
 }
 
 /** Why a derived value has the value it does (CLAUDE.md: explainable, always). */
@@ -183,6 +250,8 @@ export interface ConfidenceDerivation {
   distinctSourceCount: number;
   contradictionSignal: number;
   ontologyNovelty: number;
+  /** v1.3: 1 when any contributing evidence needed the far-hint fallback. */
+  hintFallbackSignal: number;
 }
 
 export interface StateDerivation {
@@ -196,7 +265,7 @@ export interface StateDerivation {
 
 export interface AcceptedNode {
   tempId: string;
-  /** Set when this proposal merged into an existing node (spec §7 dedupe). */
+  /** Set when this proposal merged into an existing node (gate spec §7). */
   existingNodeId?: string;
   type: NodeType;
   provenance: Provenance;

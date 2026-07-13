@@ -6,11 +6,15 @@
 import { describe, expect, it } from "vitest";
 import { normalizeQuote, normalizeWithMap } from "../normalize";
 import { locateQuote } from "../locate";
+import { GATE_CONFIG_V1 } from "../config";
 
 /** Locate `quote` in `content` and slice the ORIGINAL content by the span. */
 function sliceFor(content: string, quote: string, offsetHint?: number): string | null {
   const source = normalizeWithMap(content);
-  const hit = locateQuote(normalizeQuote(quote), source, offsetHint);
+  const hit = locateQuote(normalizeQuote(quote), source, {
+    offsetHint,
+    hintPlausibilityRadiusChars: GATE_CONFIG_V1.locate.offsetHintPlausibilityRadiusChars,
+  });
   if (hit.kind !== "found") return null;
   return content.slice(hit.spanStart, hit.spanEnd);
 }
