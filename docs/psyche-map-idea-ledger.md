@@ -444,6 +444,22 @@ NodeType closed enum (extensibility via ontologyKey only, log-only in v1, never 
 
 ---
 
+## IDEA-014 — REVIEW-01 automated: the loop becomes an agent
+**Date:** 2026-07-13 · **Source:** Jacob ("use an agent to conduct spec iteration until final build specs are produced") · **Status:** Kit built; install pending in Claude Code
+**Raw move:** Jacob has been the human router between four surfaces (build thread, Claude reviewer chat, ChatGPT reviewer chat, Claude Code). Automate the routing inside Claude Code; keep the judgment.
+
+### What was built (4 repo files + install message)
+`docs/review/reconciliation-charter.md` — the judgment layer distilled from IDEA-011/012/013 into mechanical classification rules: ACCEPT-NOW (seam breaks, law contradictions, structural upgrades, invalid tests, missing attack surfaces, correctness→tests) / ACCEPT-CHEAP / DEFER-TO-BUNDLE ("does it block building the module or piloting the product?") / REJECT-WITH-REASON (substrate-before-evidence per META-01, model-trust-as-control, cut-line scope creep). Exit: zero Criticals in both lanes or 3-round cap with escalation; never stamp final over an open Critical; ethics forks never decided by the loop. `.claude/commands/iterate-spec.md` — the orchestration loop (fresh-context Claude subagent + OpenAI-API ChatGPT lane, punch-list, human checkpoint ON by default). `scripts/chatgpt-review.mjs` — the cross-model lane (fails loudly if no API key; never silently single-model). `docs/review/spec-reviewer-prompt.md` — repo-adapted adversarial reviewer prompt (must state exact version reviewed — fixes the stale-version noise from Round D).
+
+### Design decisions worth remembering
+Cross-model lane is preserved (the temperament split caught ~2x every round); the Claude reviewer is a fresh-context subagent (same family as drafter — slightly less independent than a fresh chat, mitigated by adversarial prompt + the ChatGPT lane). Human checkpoint stays ON until the charter earns trust over ~2 specs; Tier-1 rejections and ethics forks go to Jacob forever. This build thread remains the strategy/ledger layer — the agent runs specs, not the venture.
+
+### Edges: IDEA-014 —automates→ REVIEW-01 (IDEA-011); —encodes→ the reconciliation discipline of IDEA-011/012/013; —fixes→ the stale-version review noise (IDEA-013 process note); —instance-of→ META-01 (the navigation system improving its own loop).
+### Seeds: **SEED-AO** — dry-run the loop on proposer-spec v1.1 (expect ~zero new Criticals = calibration check). **SEED-AP** — after 2 trusted specs, disable the routine checkpoint, keep the Critical/ethics escalation. **SEED-AQ** — pipe each round's punch-list back to this thread's ledger as auto-drafted IDEA entries.
+
+
+---
+
 ## NEW MODULES REGISTER
 | ID | Module | Born from | Status |
 |---|---|---|---|
@@ -476,4 +492,4 @@ NodeType closed enum (extensibility via ontologyKey only, log-only in v1, never 
 8. Demo scope for September (SEED-U): what is the minimum lovable prototype — INTAKE-01 + becoming nodes + basic sky + belief-decay view? What gets cut?
 9. PSYCH-K organization relationship: seek blessing/partnership, or stay quietly modality-agnostic? (Counsel + Jacob's read on the community politics.)
 
-*Next idea → IDEA-014.* · *(All future ideas evaluated under META-01; all specs pass REVIEW-01 before build; review findings sorted build-now vs pre-pilot-bundle.)*
+*Next idea → IDEA-015.* · *(All future ideas evaluated under META-01; all specs pass REVIEW-01 before build; review findings sorted build-now vs pre-pilot-bundle.)*
