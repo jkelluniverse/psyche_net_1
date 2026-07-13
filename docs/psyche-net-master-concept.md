@@ -172,6 +172,13 @@ IN/OUT says what's excluded; it does not say what falls first if week 5 slips. F
 ### The demo's single success test
 A PSYCH-K practitioner at the training does a 10-minute intake on their own phone, watches their sky build from their own spoken words, designs one becoming node, and says some version of *"I need this for my clients."* That sentence is the entire goal of September 23.
 
+### 7.1 Pre-pilot governance bundle (deferred findings log)
+
+*Findings whose harm requires real users to manifest are deferred HERE, verbatim, by the REVIEW-01 reconciliation charter — they block piloting, not building. Nothing on this list may be silently dropped; each must be resolved before any real user's journal enters the system.*
+
+- **[proposer-spec r1 · ChatGPT #12] Language gating method is unnamed.** "supportedLanguages = ['en']" is stated, but the detection method is not. Rejections could be inconsistent or exploitable (e.g., adversarial Unicode to bypass). Action: state the detector (fastText/CLD3 or a deterministic heuristic) and the confidence threshold, and add tests for obvious non-English entries.
+- **[proposer-spec r1 · ChatGPT #8 remainder] Chunking guarantees not fully specified.** §12 claims "quotes never split across chunks where avoidable," but no algorithm is defined; source-ID/offset mapping across chunks is unspecified. Action: specify the chunking algorithm (paragraph split, minimum token window, overlap), per-chunk sourceEventId + original absolute offsets, gate mapping against the original SourceRecord, and a boundary-quote fixture. (The v1 quote-transparency invariant and offsetHint-rebase rule already landed in proposer spec v1.2 §4; this item is the full batching schema.)
+
 ---
 
 ## 8. THE BUILD — Claude Code kickoff runbook

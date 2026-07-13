@@ -37,6 +37,11 @@ export interface ProposerConfig {
   };
   sensitiveNodeTypes: readonly NodeType[];
   supportedLanguages: readonly string[];
+  /** §10.5 retry queue — named, never inline literals (C-8). */
+  retry: {
+    maxExtractionRetries: number;
+    backoffMinutes: readonly number[];
+  };
 }
 
 export const PROPOSER_CONFIG_V1: ProposerConfig = {
@@ -50,4 +55,8 @@ export const PROPOSER_CONFIG_V1: ProposerConfig = {
   },
   sensitiveNodeTypes: ["WOUND", "SHADOW"],
   supportedLanguages: ["en"],
+  retry: {
+    maxExtractionRetries: 3,
+    backoffMinutes: [5, 30, 120],
+  },
 };

@@ -43,6 +43,32 @@ export interface GateConfig {
     minDistinctSources: number;
   };
 
+  /**
+   * Inference-aware materialization (spec v1.4 §6.1, D1). The classification
+   * is model-assigned and can only RESTRICT (hold a candidate), never create:
+   * a false HIGH label just delays until lower-distance recurrence; a false
+   * LOW label falls back to the normal thresholds.
+   */
+  inference: {
+    /** Candidates whose lowest-seen distance equals this are held. */
+    heldDistance: "HIGH_INFERENCE_INTERPRETATION";
+    /** Deterministic ordering, most direct first (for lowest-seen). */
+    distanceOrder: readonly string[];
+  };
+
+  /**
+   * Edge materialization (spec v1.4 §6.1, D2). Causal/origin edge types are
+   * high-inference BY TYPE: below threshold they wait in the shadow lane
+   * (not rendered, not lost) instead of materializing as premature
+   * low-confidence causal claims. Other edge types keep the low-confidence
+   * hypothesis-edge path.
+   */
+  edgeMaterialization: {
+    highInferenceEdgeTypes: readonly string[];
+    minConferringSpans: number;
+    minDistinctSources: number;
+  };
+
   /** Quote location (spec v1.3 §5 — the hint is never a locator). */
   locate: {
     /**
@@ -104,7 +130,7 @@ export interface GateConfig {
 }
 
 export const GATE_CONFIG_V1: GateConfig = {
-  gateVersion: "v1.3",
+  gateVersion: "v1.4",
   normalizationVersion: "v1",
   massAlgorithmVersion: "v1",
   confidenceAlgorithmVersion: "v1.1",
@@ -121,6 +147,22 @@ export const GATE_CONFIG_V1: GateConfig = {
   },
 
   ignition: {
+    minConferringSpans: 2,
+    minDistinctSources: 2,
+  },
+
+  inference: {
+    heldDistance: "HIGH_INFERENCE_INTERPRETATION",
+    distanceOrder: [
+      "DIRECT_DECLARATION",
+      "DIRECT_BEHAVIOR",
+      "LOW_INFERENCE_PATTERN",
+      "HIGH_INFERENCE_INTERPRETATION",
+    ],
+  },
+
+  edgeMaterialization: {
+    highInferenceEdgeTypes: ["DRIVES", "ROOTED_IN"],
     minConferringSpans: 2,
     minDistinctSources: 2,
   },

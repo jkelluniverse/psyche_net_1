@@ -10,6 +10,7 @@ import { applyPolicyGuards } from "./guards";
 import { parseEnvelope, validateCandidates } from "./parse";
 import { assertPolicyCoherent } from "./policy";
 import {
+  computeFenceNonce,
   PROMPT_TEMPLATE_HASH,
   PROMPT_VERSION,
   renderSystemPrompt,
@@ -60,7 +61,7 @@ export async function runProposer(
   const ctx = buildBlindedContext(input);
   const serializedContext = serializeExtractionContext(ctx);
   const system = renderSystemPrompt(ctx);
-  const user = renderUserMessage(ctx);
+  const user = renderUserMessage(ctx, computeFenceNonce(input.runId));
 
   const meta = {
     runId: input.runId,
@@ -89,6 +90,7 @@ export async function runProposer(
       output: { nodes: [], edges: [] },
       dropped: [],
       rejectedCandidates: [],
+      roleNormalizedCount: 0,
       ontologyCandidates: [],
       ...meta,
     };
@@ -109,7 +111,7 @@ export async function runProposer(
   const totalSourceWords = input.sources
     .map((s) => s.content.split(/\s+/).filter(Boolean).length)
     .reduce((a, b) => a + b, 0);
-  const { output, dropped } = applyPolicyGuards(
+  const { output, dropped, roleNormalizedCount } = applyPolicyGuards(
     nodes,
     edges,
     input.policy,
@@ -130,6 +132,7 @@ export async function runProposer(
     output,
     dropped,
     rejectedCandidates: rejected,
+    roleNormalizedCount,
     ontologyCandidates,
     ...meta,
   };

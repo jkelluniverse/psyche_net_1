@@ -6,10 +6,13 @@
 export { runProposer } from "./proposer";
 export { buildBlindedContext, serializeExtractionContext } from "./context";
 export {
+  computeFenceNonce,
   PROMPT_TEMPLATE_HASH,
   PROMPT_VERSION,
   renderSystemPrompt,
   renderUserMessage,
+  SOURCE_BEGIN,
+  SOURCE_END,
 } from "./prompt";
 export { applyPolicyGuards } from "./guards";
 export { parseEnvelope, validateCandidates } from "./parse";
@@ -24,11 +27,9 @@ export type {
   BlindedExtractionContext,
   CallModel,
   CandidatePriorNode,
-  DroppedItem,
   ExtractionPolicy,
   OntologyView,
   PriorNodeView,
   ProposerInput,
   ProposerRunResult,
-  RejectedCandidate,
 } from "./types";

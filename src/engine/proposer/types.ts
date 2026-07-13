@@ -10,6 +10,7 @@ import type {
   ProposerOutput,
   Provenance,
   SourceRecord,
+  WrapperRejection,
 } from "../contracts/extraction-contracts";
 
 /**
@@ -114,24 +115,8 @@ export interface RawValidatedEdge {
   modelReportedConfidence?: number;
 }
 
-export type DroppedReason =
-  | "NODE_TYPE_NOT_ALLOWED_BY_POLICY"
-  | "THIRD_PARTY_SUBJECT"
-  | "EDGE_ENDPOINT_UNRESOLVED"
-  | "CAP_EXCEEDED";
-
-export interface DroppedItem {
-  tempId: string;
-  kind: "node" | "edge";
-  reason: DroppedReason;
-  detail: string;
-}
-
-export interface RejectedCandidate {
-  tempId: string;
-  kind: "node" | "edge";
-  reason: string;
-}
+// Wrapper-stage rejection types are canonical since contract v2 (A-6):
+// WrapperRejection / WrapperRejectionReason live in extraction-contracts.ts.
 
 export interface ProposerRunResult {
   status: "complete" | "error";
@@ -139,9 +124,11 @@ export interface ProposerRunResult {
   attempts: number;
   output: ProposerOutput;
   /** Valid candidates removed by deterministic policy guards (§7/§9). */
-  dropped: DroppedItem[];
+  dropped: WrapperRejection[];
   /** Candidates that failed per-candidate shape validation (§10.3). */
-  rejectedCandidates: RejectedCandidate[];
+  rejectedCandidates: WrapperRejection[];
+  /** C-4: count of EXTRACTED-evidence roles normalized to SUPPORT (telemetry). */
+  roleNormalizedCount: number;
   /** Unknown ontology keys, log-only in v1 (§7 guard 3). */
   ontologyCandidates: { tempId: string; ontologyKey: string }[];
   runId: string;

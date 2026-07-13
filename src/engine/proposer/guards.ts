@@ -4,12 +4,13 @@
 // check, and recall caps all live here — none of them trusts the model.
 
 import type {
+  NodeRef,
   ProposedEdge,
   ProposedNode,
+  WrapperRejection,
 } from "../contracts/extraction-contracts";
 import type { ProposerConfig } from "./config";
 import type {
-  DroppedItem,
   ExtractionPolicy,
   RawValidatedEdge,
   RawValidatedNode,
@@ -28,7 +29,9 @@ const THIRD_PARTY_SUBJECT_RE =
 
 export interface GuardResult {
   output: { nodes: ProposedNode[]; edges: ProposedEdge[] };
-  dropped: DroppedItem[];
+  dropped: WrapperRejection[];
+  /** C-4: EXTRACTED-evidence roles normalized to SUPPORT (telemetry count). */
+  roleNormalizedCount: number;
 }
 
 export function applyPolicyGuards(
@@ -39,7 +42,7 @@ export function applyPolicyGuards(
   totalSourceWords: number,
   config: ProposerConfig,
 ): GuardResult {
-  const dropped: DroppedItem[] = [];
+  const dropped: WrapperRejection[] = [];
   const allowed = new Set(policy.allowedNodeTypes);
 
   // Guard 1 — node-type policy (the wound-gate made structural): dropped by
@@ -49,6 +52,7 @@ export function applyPolicyGuards(
     dropped.push({
       tempId: n.tempId,
       kind: "node",
+      stage: "WRAPPER",
       reason: "NODE_TYPE_NOT_ALLOWED_BY_POLICY",
       detail: `type ${n.type} is not allowed by policy ${policy.policyVersion} in ${policy.mode} mode`,
     });
@@ -61,6 +65,7 @@ export function applyPolicyGuards(
     dropped.push({
       tempId: n.tempId,
       kind: "node",
+      stage: "WRAPPER",
       reason: "THIRD_PARTY_SUBJECT",
       detail: `label "${n.label}" reads as a claim about a third party's psyche, not the author's`,
     });
@@ -78,6 +83,7 @@ export function applyPolicyGuards(
       dropped.push({
         tempId: n.tempId,
         kind: "node",
+        stage: "WRAPPER",
         reason: "CAP_EXCEEDED",
         detail: `candidate cap ${capTotal} for ${totalSourceWords} source words`,
       });
@@ -93,6 +99,7 @@ export function applyPolicyGuards(
     dropped.push({
       tempId: n.tempId,
       kind: "node",
+      stage: "WRAPPER",
       reason: "CAP_EXCEEDED",
       detail: `sensitive-type cap ${config.caps.maxSensitiveCandidatesPerRun} per run`,
     });
@@ -100,44 +107,55 @@ export function applyPolicyGuards(
   });
 
   // Guard 2 — provenance is stamped by the wrapper; the model's field (if
-  // any) was already discarded at validation.
+  // any) was already discarded at validation. C-4: role semantics belong to
+  // the becoming lane — on EXTRACTED evidence, DECLARATION/ENACTMENT labels
+  // are meaningless and would only zero mass, so they are deterministically
+  // normalized to SUPPORT (counted as telemetry, never a prompt rule).
+  let roleNormalizedCount = 0;
   const outNodes: ProposedNode[] = surviving.map((n) => ({
     tempId: n.tempId,
     type: n.type,
     provenance: "EXTRACTED",
     label: n.label,
     ...(n.ontologyKey !== undefined ? { ontologyKey: n.ontologyKey } : {}),
-    evidence: n.evidence,
+    evidence: n.evidence.map((ev) => {
+      if (ev.role !== undefined && ev.role !== "SUPPORT") {
+        roleNormalizedCount++;
+        return { ...ev, role: "SUPPORT" as const };
+      }
+      return ev;
+    }),
     ...(n.inferenceDistance !== undefined ? { inferenceDistance: n.inferenceDistance } : {}),
     ...(n.modelReportedConfidence !== undefined
       ? { modelReportedConfidence: n.modelReportedConfidence }
       : {}),
   }));
 
-  // Guard 4 — edge-ref resolution: NodeRef → canonical string endpoints.
-  // Dangling edges are dropped, never anchored to invented nodes.
+  // Guard 4 — edge-ref guard (D3: NodeRef is carried END-TO-END; the wrapper
+  // verifies resolvability but never flattens — identity stays discriminated
+  // all the way into the gate). Dangling refs are dropped, never anchored to
+  // invented nodes.
   const survivingTempIds = new Set(outNodes.map((n) => n.tempId));
-  const resolve = (ref: RawValidatedEdge["source"]): string | null => {
-    if (ref.kind === "PROPOSED") return survivingTempIds.has(ref.tempId) ? ref.tempId : null;
-    return priorExtractedNodeIds.has(ref.nodeId) ? ref.nodeId : null;
-  };
+  const resolvable = (ref: NodeRef): boolean =>
+    ref.kind === "PROPOSED"
+      ? survivingTempIds.has(ref.tempId)
+      : priorExtractedNodeIds.has(ref.nodeId);
   const outEdges: ProposedEdge[] = [];
   for (const e of edges) {
-    const sourceId = resolve(e.source);
-    const targetId = resolve(e.target);
-    if (sourceId === null || targetId === null) {
+    if (!resolvable(e.source) || !resolvable(e.target)) {
       dropped.push({
         tempId: e.tempId,
         kind: "edge",
-        reason: "EDGE_ENDPOINT_UNRESOLVED",
-        detail: `endpoint ${sourceId === null ? JSON.stringify(e.source) : JSON.stringify(e.target)} does not resolve to a surviving or provided node`,
+        stage: "WRAPPER",
+        reason: "DANGLING_EDGE_REF",
+        detail: `endpoint ${JSON.stringify(!resolvable(e.source) ? e.source : e.target)} does not resolve to a surviving or provided node`,
       });
       continue;
     }
     outEdges.push({
       tempId: e.tempId,
-      sourceTempId: sourceId,
-      targetTempId: targetId,
+      source: e.source,
+      target: e.target,
       type: e.type,
       evidence: e.evidence,
       ...(e.inferenceDistance !== undefined ? { inferenceDistance: e.inferenceDistance } : {}),
@@ -147,5 +165,5 @@ export function applyPolicyGuards(
     });
   }
 
-  return { output: { nodes: outNodes, edges: outEdges }, dropped };
+  return { output: { nodes: outNodes, edges: outEdges }, dropped, roleNormalizedCount };
 }

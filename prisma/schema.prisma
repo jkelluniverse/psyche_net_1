@@ -73,6 +73,12 @@ model PractitionerClient {
   client         User     @relation("client", fields: [clientId], references: [id])
   clientId       String
   createdAt      DateTime @default(now())
+  // The AUTHORIZATION basis for PRACTITIONER_SUPPORTED extraction (proposer
+  // spec §3): null = link exists but relationship not verified — the policy
+  // constructor reads THIS, never a request field.
+  verifiedAt     DateTime?
+  // The consent version the client accepted for this relationship.
+  consentVersion String?
   // Client controls what the practitioner may see (consent, LAW 8).
   consentScope   Json     @default("{}")
 
@@ -433,6 +439,11 @@ model ExtractionRun {
   tokensIn        Int?
   tokensOut       Int?
   costUsd         Float?
+  attempts        Int       @default(1)   // model calls incl. the single repair (§10)
+  responseHash    String?   // sha256 of the raw model response (audit)
+  rawResponseRef  String?   // pointer to the stored payload under the retention policy
+  parserVersion   String?
+  omittedEventIds Json?     // events deferred/omitted by caps — recorded, never silent (§4)
   startedAt       DateTime  @default(now())
   finishedAt      DateTime?
   status          String    // "running" | "complete" | "error"
@@ -467,13 +478,22 @@ model ShadowCandidate {
   id            String    @id @default(cuid())
   userId        String
   // Stable identity so repeat sightings increment rather than duplicate.
-  candidateKey  String    // e.g. hash(type + normalizedLabel)
-  type          NodeType
+  candidateKey  String    // nodes: type::normalizedLabel; edges: EDGE::type::srcKey=>tgtKey
+  // v2 contracts: the shadow lane holds EDGES too (high-inference causal
+  // claims wait instead of rendering prematurely). kind discriminates.
+  kind          String    @default("node")   // "node" | "edge"
+  type          NodeType?  // node candidates only
+  label         String?    // node candidates only
+  edgeType      EdgeType?  // edge candidates only
+  sourceKey     String?    // edge: existing node id, or match key for in-pass nodes
+  targetKey     String?
+  // Lowest-seen inference distance across sightings (gate spec v1.4 §6.1):
+  // held while HIGH_INFERENCE_INTERPRETATION; released by lower-distance recurrence.
+  inferenceDistance String?
   provenance    Provenance
-  label         String
   timesSeen     Int       @default(1)
   distinctSources Int     @default(1)
-  waitingReason String    // e.g. "BELOW_MATERIALIZATION_THRESHOLD"
+  waitingReason String    // "BELOW_MATERIALIZATION_THRESHOLD" | "HELD_HIGH_INFERENCE"
   createdAt     DateTime  @default(now())
   lastSeen      DateTime  @default(now())
   // Accumulated verified evidence spans (promoted to real Evidence on materialization).

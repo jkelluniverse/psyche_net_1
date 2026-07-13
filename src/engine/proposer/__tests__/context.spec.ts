@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import { buildBlindedContext, serializeExtractionContext } from "../context";
-import { renderSystemPrompt, renderUserMessage } from "../prompt";
+import { computeFenceNonce, renderSystemPrompt, renderUserMessage } from "../prompt";
 import {
   EXTRACTED_PRIOR,
   HYPOTHESIS_PRIOR,
@@ -29,8 +29,9 @@ describe("blinding keystone — context byte-identity (§13.1)", () => {
   it("the rendered prompts are byte-identical with and without adjacent hypotheses", () => {
     const a = buildBlindedContext(input({ priorNodes: [...EXTRACTED_PRIOR, ...HYPOTHESIS_PRIOR] }));
     const b = buildBlindedContext(input({ priorNodes: [...EXTRACTED_PRIOR] }));
+    const nonce = computeFenceNonce("run-1");
     expect(renderSystemPrompt(a)).toBe(renderSystemPrompt(b));
-    expect(renderUserMessage(a)).toBe(renderUserMessage(b));
+    expect(renderUserMessage(a, nonce)).toBe(renderUserMessage(b, nonce));
   });
 
   it("no hypothesis label, evidence text, or derived field ever appears in context or prompts", () => {
@@ -38,7 +39,9 @@ describe("blinding keystone — context byte-identity (§13.1)", () => {
       input({ priorNodes: [...EXTRACTED_PRIOR, ...HYPOTHESIS_PRIOR] }),
     );
     const everything =
-      serializeExtractionContext(ctx) + renderSystemPrompt(ctx) + renderUserMessage(ctx);
+      serializeExtractionContext(ctx) +
+      renderSystemPrompt(ctx) +
+      renderUserMessage(ctx, computeFenceNonce("run-1"));
     expect(everything).not.toContain("SECRET_LENS_HYPOTHESIS");
     expect(everything).not.toContain("SECRET_BECOMING_SEED");
     expect(everything).not.toContain("SECRET_PRACTITIONER_NOTE");

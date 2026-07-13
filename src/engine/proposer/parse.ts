@@ -11,7 +11,8 @@ import type {
   NodeType,
   ProposedEvidence,
 } from "../contracts/extraction-contracts";
-import type { RawValidatedEdge, RawValidatedNode, RejectedCandidate } from "./types";
+import type { WrapperRejection } from "../contracts/extraction-contracts";
+import type { RawValidatedEdge, RawValidatedNode } from "./types";
 
 // The proposer's closed enum is the EXTRACTABLE types: LENS and BECOMING are
 // never proposable by extraction in any mode (they enter through their own
@@ -132,7 +133,7 @@ function validNodeRef(raw: unknown): NodeRef | null {
 export interface CandidateValidationResult {
   nodes: RawValidatedNode[];
   edges: RawValidatedEdge[];
-  rejected: RejectedCandidate[];
+  rejected: WrapperRejection[];
 }
 
 export function validateCandidates(
@@ -142,7 +143,7 @@ export function validateCandidates(
 ): CandidateValidationResult {
   const nodes: RawValidatedNode[] = [];
   const edges: RawValidatedEdge[] = [];
-  const rejected: RejectedCandidate[] = [];
+  const rejected: WrapperRejection[] = [];
 
   const tempIdOf = (raw: unknown): string => {
     const t = (raw as Record<string, unknown> | null)?.tempId;
@@ -150,8 +151,8 @@ export function validateCandidates(
   };
 
   for (const raw of rawNodes) {
-    const reject = (reason: string) =>
-      rejected.push({ tempId: tempIdOf(raw), kind: "node", reason });
+    const reject = (detail: string, reason: WrapperRejection["reason"] = "SHAPE_INVALID") =>
+      rejected.push({ tempId: tempIdOf(raw), kind: "node", stage: "WRAPPER", reason, detail });
     if (raw === null || typeof raw !== "object") {
       reject("candidate is not an object");
       continue;
@@ -183,6 +184,7 @@ export function validateCandidates(
         Array.isArray(n.evidence) && n.evidence.length > 0
           ? "no valid evidence remains (cited source ids outside the provided set)"
           : "extracted candidate with no evidence",
+        "NO_VALID_EVIDENCE",
       );
       continue;
     }
@@ -207,8 +209,8 @@ export function validateCandidates(
   }
 
   for (const raw of rawEdges) {
-    const reject = (reason: string) =>
-      rejected.push({ tempId: tempIdOf(raw), kind: "edge", reason });
+    const reject = (detail: string, reason: WrapperRejection["reason"] = "SHAPE_INVALID") =>
+      rejected.push({ tempId: tempIdOf(raw), kind: "edge", stage: "WRAPPER", reason, detail });
     if (raw === null || typeof raw !== "object") {
       reject("candidate is not an object");
       continue;

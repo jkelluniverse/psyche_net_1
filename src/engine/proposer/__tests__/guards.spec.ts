@@ -151,18 +151,39 @@ describe("edge-ref guard (NodeRef resolution)", () => {
     ],
   });
 
-  it("resolves valid NodeRefs to canonical string endpoints; drops dangling/unknown refs", async () => {
+  it("verifies NodeRef resolvability and carries the discriminated refs END-TO-END (D3); drops dangling/unknown refs", async () => {
     const stub = stubModel(edgeResponse);
     const result = await runProposer(input(), stub.call);
     expect(result.output.edges).toHaveLength(1);
     expect(result.output.edges[0]).toMatchObject({
       tempId: "g1",
-      sourceTempId: "n1",
-      targetTempId: "node-extracted-1",
+      source: { kind: "PROPOSED", tempId: "n1" },
+      target: { kind: "EXISTING", nodeId: "node-extracted-1" },
       type: "REINFORCES",
     });
-    const droppedIds = result.dropped.filter((d) => d.kind === "edge").map((d) => d.tempId);
-    expect(droppedIds.sort()).toEqual(["g2", "g3"]);
+    const droppedEdges = result.dropped.filter((d) => d.kind === "edge");
+    expect(droppedEdges.map((d) => d.tempId).sort()).toEqual(["g2", "g3"]);
+    expect(droppedEdges.every((d) => d.reason === "DANGLING_EDGE_REF" && d.stage === "WRAPPER")).toBe(true);
+  });
+
+  it("C-4: DECLARATION/ENACTMENT roles on EXTRACTED evidence are normalized to SUPPORT (deterministic, counted)", async () => {
+    const response = JSON.stringify({
+      nodes: [
+        {
+          tempId: "n1",
+          type: "PATTERN",
+          label: "Saying yes",
+          evidence: [
+            { sourceEventId: "e1", quote: "saying yes when I want to say no", role: "ENACTMENT" },
+          ],
+        },
+      ],
+      edges: [],
+    });
+    const stub = stubModel(response);
+    const result = await runProposer(input(), stub.call);
+    expect(result.output.nodes[0].evidence[0].role).toBe("SUPPORT");
+    expect(result.roleNormalizedCount).toBe(1);
   });
 });
 

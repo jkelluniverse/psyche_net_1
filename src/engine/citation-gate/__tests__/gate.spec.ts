@@ -363,7 +363,7 @@ describe("source resolution failures", () => {
   });
 });
 
-describe("edges", () => {
+describe("edges (v1.4: NodeRef endpoints; causal edges wait)", () => {
   const sources = () =>
     sourceMap(
       src("e1", JOURNAL_1),
@@ -382,15 +382,17 @@ describe("edges", () => {
       ev("e4", "protecting everyone"),
     ]),
   ];
+  const P = (tempId: string) => ({ kind: "PROPOSED" as const, tempId });
+  const X = (nodeId: string) => ({ kind: "EXISTING" as const, nodeId });
 
   it("an edge between two accepted nodes survives, with verified evidence and derived strength", () => {
     const result = gate(
       proposals(twoNodes(), [
         {
           tempId: "g1",
-          sourceTempId: "n2",
-          targetTempId: "n1",
-          type: "DRIVES",
+          source: P("n2"),
+          target: P("n1"),
+          type: "REINFORCES",
           evidence: [ev("e3", "I protect everyone so no one sees me tired")],
         },
       ]),
@@ -400,6 +402,7 @@ describe("edges", () => {
       NOW,
     );
     expect(result.acceptedEdges).toHaveLength(1);
+    expect(result.acceptedEdges[0].source).toEqual(P("n2"));
     expect(result.acceptedEdges[0].strength).toBeGreaterThan(0);
     expect(result.acceptedEdges[0].confidence).toBeGreaterThan(0);
   });
@@ -411,15 +414,7 @@ describe("edges", () => {
           ...twoNodes(),
           node("n3", "Fabricated", [ev("e1", "this text is nowhere in the source")]),
         ],
-        [
-          {
-            tempId: "g1",
-            sourceTempId: "n3",
-            targetTempId: "n1",
-            type: "DRIVES",
-            evidence: [],
-          },
-        ],
+        [{ tempId: "g1", source: P("n3"), target: P("n1"), type: "REINFORCES", evidence: [] }],
       ),
       sources(),
       EMPTY_GRAPH,
@@ -432,7 +427,7 @@ describe("edges", () => {
     ).toBeTruthy();
   });
 
-  it("an edge may reference an existing graph node as an endpoint", () => {
+  it("an edge may reference an existing graph node via an EXISTING ref — never by string guessing", () => {
     const prior = {
       nodes: [
         existingNode("db-node-1", "Old belief", [
@@ -444,13 +439,7 @@ describe("edges", () => {
     };
     const result = gate(
       proposals(twoNodes(), [
-        {
-          tempId: "g1",
-          sourceTempId: "n1",
-          targetTempId: "db-node-1",
-          type: "REINFORCES",
-          evidence: [],
-        },
+        { tempId: "g1", source: P("n1"), target: X("db-node-1"), type: "REINFORCES", evidence: [] },
       ]),
       sources(),
       prior,
@@ -458,6 +447,153 @@ describe("edges", () => {
       NOW,
     );
     expect(result.acceptedEdges).toHaveLength(1);
+    expect(result.acceptedEdges[0].target).toEqual(X("db-node-1"));
+  });
+
+  it("a PROPOSED tempId that collides with an existing node id resolves by KIND, not membership", () => {
+    // The tempId "db-node-1" collides with a real node id — under NodeRef the
+    // kinds keep them distinct; the PROPOSED ref binds to the accepted node.
+    const prior = {
+      nodes: [
+        existingNode("db-node-1", "Old belief", [
+          evidenceRecord("old-e", "old quote"),
+          evidenceRecord("old-e2", "old quote two"),
+        ]),
+      ],
+      edges: [],
+    };
+    const collidingNode = { ...twoNodes()[0], tempId: "db-node-1" };
+    const result = gate(
+      proposals(
+        [collidingNode, twoNodes()[1]],
+        [
+          { tempId: "g1", source: P("db-node-1"), target: P("n2"), type: "REINFORCES", evidence: [] },
+        ],
+      ),
+      sources(),
+      prior,
+      [],
+      NOW,
+    );
+    expect(result.acceptedEdges).toHaveLength(1);
+    expect(result.acceptedEdges[0].source).toEqual(P("db-node-1")); // the PROPOSED one
+  });
+
+  it("gate test 17 (v1.4, D2): a DRIVES edge from a single event waits in the edge shadow lane — not rendered, not lost", () => {
+    const pass1 = gate(
+      proposals(twoNodes(), [
+        {
+          tempId: "g1",
+          source: P("n2"),
+          target: P("n1"),
+          type: "DRIVES",
+          evidence: [ev("e3", "I protect everyone so no one sees me tired")],
+        },
+      ]),
+      sources(),
+      EMPTY_GRAPH,
+      [],
+      NOW,
+    );
+    expect(pass1.acceptedEdges).toHaveLength(0); // premature causal claim never renders
+    const shadowEdge = pass1.shadowBuffer.find((c) => c.kind === "edge");
+    expect(shadowEdge).toBeTruthy();
+    expect(shadowEdge!.waitingReason).toBe("BELOW_MATERIALIZATION_THRESHOLD");
+    expect(shadowEdge!.evidenceCache).toHaveLength(1);
+    expect(
+      pass1.rejected.find((r) => r.tempId === "g1" && r.reason === "BELOW_MATERIALIZATION_THRESHOLD"),
+    ).toBeTruthy();
+
+    // Second distinct-source evidence arrives → the edge materializes with
+    // the promoted cache.
+    const pass2 = gate(
+      proposals(twoNodes(), [
+        {
+          tempId: "g9",
+          source: P("n2"),
+          target: P("n1"),
+          type: "DRIVES",
+          evidence: [ev("e4", "Being tired is the cost of protecting everyone")],
+        },
+      ]),
+      sources(),
+      EMPTY_GRAPH,
+      pass1.shadowBuffer,
+      NOW,
+    );
+    expect(pass2.acceptedEdges).toHaveLength(1);
+    expect(pass2.acceptedEdges[0].evidence).toHaveLength(2); // cache + new
+    expect(pass2.shadowBuffer.filter((c) => c.kind === "edge")).toHaveLength(0);
+  });
+
+  it("non-causal edge types still materialize as low-confidence hypotheses when thin", () => {
+    const result = gate(
+      proposals(twoNodes(), [
+        { tempId: "g1", source: P("n1"), target: P("n2"), type: "EXPRESSES_AS", evidence: [] },
+      ]),
+      sources(),
+      EMPTY_GRAPH,
+      [],
+      NOW,
+    );
+    expect(result.acceptedEdges).toHaveLength(1);
+    expect(result.acceptedEdges[0].confidence).toBe(GATE_CONFIG_V1.confidence.hypothesisFloor);
+  });
+});
+
+describe("gate test 16 (v1.4, D1) — inference-aware materialization", () => {
+  const sources = () =>
+    sourceMap(
+      src("e1", "My partner says I work too much lately."),
+      src("e2", "She said again that I work too much."),
+      src("e3", "I am afraid of being left. There it is, in plain words."),
+    );
+
+  it("a HIGH_INFERENCE candidate is held even when recurrence is met — the label can only restrict", () => {
+    const overreach = {
+      ...node("n1", "Terrified of abandonment", [
+        ev("e1", "I work too much"),
+        ev("e2", "I work too much"),
+      ]),
+      inferenceDistance: "HIGH_INFERENCE_INTERPRETATION" as const,
+    };
+    const result = gate(proposals([overreach]), sources(), EMPTY_GRAPH, [], NOW);
+    expect(result.acceptedNodes).toHaveLength(0); // 2 spans / 2 events, still held
+    expect(result.rejected[0].reason).toBe("HELD_HIGH_INFERENCE");
+    const held = result.shadowBuffer[0];
+    expect(held.kind).toBe("node");
+    expect(held.waitingReason).toBe("HELD_HIGH_INFERENCE");
+    expect(held.inferenceDistance).toBe("HIGH_INFERENCE_INTERPRETATION");
+  });
+
+  it("a later sighting at LOWER inference distance releases the hold (recurrence at lower distance)", () => {
+    const overreach = {
+      ...node("n1", "Afraid of being left", [
+        ev("e1", "I work too much"),
+        ev("e2", "I work too much"),
+      ]),
+      inferenceDistance: "HIGH_INFERENCE_INTERPRETATION" as const,
+    };
+    const pass1 = gate(proposals([overreach]), sources(), EMPTY_GRAPH, [], NOW);
+    expect(pass1.acceptedNodes).toHaveLength(0);
+
+    const direct = {
+      ...node("n9", "Afraid of being left", [ev("e3", "I am afraid of being left")]),
+      inferenceDistance: "DIRECT_DECLARATION" as const,
+    };
+    const pass2 = gate(proposals([direct]), sources(), EMPTY_GRAPH, pass1.shadowBuffer, NOW);
+    expect(pass2.acceptedNodes).toHaveLength(1); // released: 3 spans, 3 events, lowest-seen DIRECT
+    expect(pass2.acceptedNodes[0].evidence.length).toBeGreaterThanOrEqual(3);
+    expect(pass2.shadowBuffer).toHaveLength(0);
+  });
+
+  it("an unclassified candidate follows the normal thresholds (absence of the label never restricts)", () => {
+    const plain = node("n1", "Working too much", [
+      ev("e1", "I work too much"),
+      ev("e2", "I work too much"),
+    ]);
+    const result = gate(proposals([plain]), sources(), EMPTY_GRAPH, [], NOW);
+    expect(result.acceptedNodes).toHaveLength(1);
   });
 });
 
@@ -533,11 +669,15 @@ describe("test 10 — fail-closed fuzz", () => {
           type: pick(["BELIEF", "PATTERN", "BECOMING", "LENS"] as const),
         }),
       );
+      const ref = () =>
+        rnd() < 0.5
+          ? { kind: "PROPOSED" as const, tempId: pick([...nodes.map((n) => n.tempId), "nonexistent"]) }
+          : { kind: "EXISTING" as const, nodeId: pick(["ghost-id", "nonexistent"]) };
       const edges = Array.from({ length: Math.floor(rnd() * 3) }, (_, i) => ({
         tempId: `g${iter}-${i}`,
-        sourceTempId: pick([...nodes.map((n) => n.tempId), "nonexistent"]),
-        targetTempId: pick([...nodes.map((n) => n.tempId), "nonexistent"]),
-        type: "DRIVES" as const,
+        source: ref(),
+        target: ref(),
+        type: pick(["DRIVES", "REINFORCES", "EXPRESSES_AS"] as const),
         evidence: [ev(pick(["e0", "e1", "missing"]), randomString())],
       }));
 
@@ -865,7 +1005,7 @@ describe("empty and versioned output", () => {
 
   it("every GateResult carries the full version stamp set (auditability)", () => {
     const result = gate(proposals(), sourceMap(), EMPTY_GRAPH, [], NOW);
-    expect(result.gateVersion).toBe("v1.3");
+    expect(result.gateVersion).toBe("v1.4");
     expect(result.normalizationVersion).toBe("v1");
     expect(result.massAlgorithmVersion).toBe("v1");
     expect(result.confidenceAlgorithmVersion).toBe("v1.1");

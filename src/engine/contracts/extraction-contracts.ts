@@ -14,7 +14,7 @@
 // where these values meet Prisma.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const CONTRACT_VERSION = "v1";
+export const CONTRACT_VERSION = "v2";
 
 // ── Closed enums (extensibility lives ONLY in ontologyKey — proposer §7.3) ──
 
@@ -114,9 +114,14 @@ export interface ProposedNode {
 
 export interface ProposedEdge {
   tempId: string;
-  /** A ProposedNode.tempId from this pass, or an existing PsycheNode id. */
-  sourceTempId: string;
-  targetTempId: string;
+  /**
+   * v2 (D3, round-1 integration): endpoints are discriminated NodeRefs
+   * END-TO-END — a tempId/nodeId namespace collision is unrepresentable at
+   * the type level, in the wrapper AND the gate. (v1 flattened to strings,
+   * which reintroduced the collision NodeRef exists to kill.)
+   */
+  source: NodeRef;
+  target: NodeRef;
   type: EdgeType;
   evidence: ProposedEvidence[];
   inferenceDistance?: InferenceDistance;
@@ -129,13 +134,11 @@ export interface ProposerOutput {
 }
 
 /**
- * Discriminated endpoint reference used at the MODEL-OUTPUT layer (proposer
- * spec §3) to kill tempId/nodeId namespace collisions. The proposer's
- * edge-ref guard resolves NodeRef → the plain string endpoints of the
- * canonical ProposedEdge above before anything reaches the gate.
- * (Surfaced spec seam: gate spec §3.1 keeps string endpoints; proposer spec
- * §3 introduces NodeRef. Resolution: NodeRef is the raw-model shape; the
- * canonical contract keeps strings.)
+ * Discriminated endpoint reference (proposer spec §3; canonical since
+ * contract v2 / gate spec v1.4): PROPOSED refers to a ProposedNode.tempId in
+ * this pass; EXISTING refers to a persisted PsycheNode id. Carried end-to-end
+ * — proposer output, gate input, and AcceptedEdge — so identity is resolved
+ * by kind, never by string-membership guessing.
  */
 export type NodeRef =
   | { kind: "PROPOSED"; tempId: string }
@@ -286,8 +289,9 @@ export interface AcceptedNode {
 export interface AcceptedEdge {
   tempId: string;
   existingEdgeId?: string;
-  sourceTempId: string;
-  targetTempId: string;
+  /** PROPOSED tempIds are aliased to the representative of any in-pass merge. */
+  source: NodeRef;
+  target: NodeRef;
   type: EdgeType;
   evidence: VerifiedEvidence[];
   strength: number;
@@ -303,6 +307,7 @@ export type RejectionReason =
   | "SOURCE_NOT_FOUND"
   | "SOURCE_INVALIDATED"
   | "BELOW_MATERIALIZATION_THRESHOLD"
+  | "HELD_HIGH_INFERENCE" // v2 (D1): distinct from an ordinary recurrence hold
   | "EDGE_ENDPOINT_REJECTED"
   | "EMPTY_EVIDENCE_NON_HYPOTHESIS"
   | "AMBIGUOUS_QUOTE";
@@ -310,25 +315,80 @@ export type RejectionReason =
 export interface RejectedItem {
   tempId: string;
   kind: "node" | "edge";
+  /** v2 (A-6): which stage rejected it — the gate stamps "GATE". */
+  stage: "GATE";
   reason: RejectionReason;
   detail: string;
 }
 
 /**
- * A valid-but-subthreshold candidate, retained across passes (never
- * discarded). Mirrors the ShadowCandidate table; evidenceCache accumulates
- * verified spans until the materialization threshold clears.
+ * v2 (A-6): canonical machine-readable reasons for WRAPPER-stage drops and
+ * per-candidate validation failures, so §12's rejection telemetry has typed
+ * things to count and Proposal.rejectionReason never drifts into ad-hoc
+ * strings. The gate is the sole writer of "shadow" outcomes; the wrapper
+ * emits only accepted/rejected at its layer.
  */
-export interface ShadowCandidate {
+export type WrapperRejectionReason =
+  | "NODE_TYPE_NOT_ALLOWED_BY_POLICY"
+  | "THIRD_PARTY_SUBJECT"
+  | "SHAPE_INVALID"
+  | "NO_VALID_EVIDENCE"
+  | "DANGLING_EDGE_REF"
+  | "CAP_EXCEEDED";
+
+export interface WrapperRejection {
+  tempId: string;
+  kind: "node" | "edge";
+  stage: "WRAPPER";
+  reason: WrapperRejectionReason;
+  detail: string;
+}
+
+export type ShadowWaitingReason =
+  | "BELOW_MATERIALIZATION_THRESHOLD"
+  | "HELD_HIGH_INFERENCE";
+
+interface ShadowCandidateCommon {
   candidateKey: string;
-  type: NodeType;
   provenance: Provenance;
-  label: string;
-  ontologyKey?: string;
   timesSeen: number;
+  /** Distinct source events across accumulated sightings (mirrors schema). */
+  distinctSources: number;
+  waitingReason: ShadowWaitingReason;
+  /**
+   * The LOWEST inference distance seen across sightings (D1, round-1
+   * integration). A candidate whose lowest-seen distance is
+   * HIGH_INFERENCE_INTERPRETATION is held regardless of recurrence; a later
+   * sighting at lower distance releases it to normal thresholds — this is
+   * §8's "recurrence at lower inference distance" made deterministic.
+   * Absent = no sighting carried a classification (legacy/normal rules).
+   */
+  inferenceDistance?: InferenceDistance;
   evidenceCache: VerifiedEvidence[];
   lastSeen: Date;
 }
+
+/**
+ * A valid-but-subthreshold candidate, retained across passes (never
+ * discarded). v2: a discriminated node|edge union — edges wait too (D2),
+ * instead of materializing as premature low-confidence causal claims.
+ * Edge endpoint keys are stable across passes: an EXISTING endpoint is the
+ * node id; a PROPOSED endpoint is the node MATCH KEY (type::normalizedLabel),
+ * resolved against the graph when the candidate clears its threshold.
+ */
+export type ShadowCandidate =
+  | (ShadowCandidateCommon & {
+      kind: "node";
+      type: NodeType;
+      label: string;
+      ontologyKey?: string;
+    })
+  | (ShadowCandidateCommon & {
+      kind: "edge";
+      edgeType: EdgeType;
+      sourceKey: string;
+      targetKey: string;
+    });
 
 export interface GateResult {
   acceptedNodes: AcceptedNode[];

@@ -1,8 +1,10 @@
 # Citation Gate — Module Specification
 
-*Psyche-Net · the load-bearing wall · v1.3 · governs `/src/engine/citation-gate/`*
+*Psyche-Net · the load-bearing wall · v1.4 · governs `/src/engine/citation-gate/`*
 
-> **v1.3 changelog (proposer-review round — the seam fix):** both reviewers found the proposer→gate seam break: `role`/`polarity` were in `ProposedEvidence` (v1.2) but were **dropped at `VerifiedEvidence`**, and §4's algorithm still computed `conferring` from authorship alone — so the becoming-ignition fix was disconnected end-to-end. Fixed: `VerifiedEvidence` now carries `role`/`polarity` through; §4 computes conferring per the full §6 rule; ignition is explicitly **ENACTMENT-role with a deterministic ≥2-spans/≥2-events threshold** (a single mislabeled declaration cannot ignite); `offsetHint` is explicitly **non-authoritative** (find all matches first; hint = tie-break only, never a locator, never creates or rejects evidence). **NEW REQUIREMENT — one canonical contract module:** all shared types (`ProposedEvidence`, `ProposedNode`, `ProposedEdge`, `ProposerOutput`, `VerifiedEvidence`, `GateResult`, `ShadowCandidate`) live in ONE versioned source file (`/src/engine/contracts/extraction-contracts.ts`), imported by both proposer and gate; `contractVersion` is stamped on every `ExtractionRun`. The two module specs *describe* the contracts; the code file *is* the contract. This round's root cause was maintaining contracts in two documents — that ends here.
+> **v1.4 changelog (REVIEW-01 automated round 1 — punch-list A-1/A-2/A-6, decisions D1–D3):** v1.3 shipped the inference-distance rule as prose with no carrier — this spec never mentioned inference, `ShadowCandidate` couldn't hold the classification, and no distinct waiting reason existed; that was a bug of the exact class the v1.3 round was written to kill, and it is now structural: §6.1 gains **inference-aware materialization** (an EXTRACTED candidate whose lowest-seen distance is `HIGH_INFERENCE_INTERPRETATION` is held in the shadow buffer regardless of recurrence — reason `HELD_HIGH_INFERENCE` — and released only by a sighting at lower distance; the model's label can only RESTRICT, never create). **The shadow lane now holds edges** (D2): high-inference edge types (DRIVES/ROOTED_IN, versioned config) below ≥2-spans/≥2-distinct-sources wait as `kind:"edge"` shadow candidates instead of materializing as premature low-confidence causal claims — v1.3's "thin edges materialize as hypotheses" now applies only to non-causal types. **Edge endpoints are `NodeRef` end-to-end** (D3, overriding the v1.2 flatten-to-strings resolution): identity resolves by `kind`, never string membership, so a model-minted tempId colliding with a real node id is unrepresentable. `RejectedItem` carries `stage`; wrapper-stage reasons are canonical (`WrapperRejectionReason`, contract v2). `CONTRACT_VERSION` → v2; gateVersion → v1.4. Tests 16–17 added.
+>
+> *v1.3 changelog (proposer-review round — the seam fix):** both reviewers found the proposer→gate seam break: `role`/`polarity` were in `ProposedEvidence` (v1.2) but were **dropped at `VerifiedEvidence`**, and §4's algorithm still computed `conferring` from authorship alone — so the becoming-ignition fix was disconnected end-to-end. Fixed: `VerifiedEvidence` now carries `role`/`polarity` through; §4 computes conferring per the full §6 rule; ignition is explicitly **ENACTMENT-role with a deterministic ≥2-spans/≥2-events threshold** (a single mislabeled declaration cannot ignite); `offsetHint` is explicitly **non-authoritative** (find all matches first; hint = tie-break only, never a locator, never creates or rejects evidence). **NEW REQUIREMENT — one canonical contract module:** all shared types (`ProposedEvidence`, `ProposedNode`, `ProposedEdge`, `ProposerOutput`, `VerifiedEvidence`, `GateResult`, `ShadowCandidate`) live in ONE versioned source file (`/src/engine/contracts/extraction-contracts.ts`), imported by both proposer and gate; `contractVersion` is stamped on every `ExtractionRun`. The two module specs *describe* the contracts; the code file *is* the contract. This round's root cause was maintaining contracts in two documents — that ends here.
 >
 > *v1.2:* implementation-surfaced fixes (offsetHint/role/polarity into ProposedEvidence; shadowBuffer → ShadowCandidate[]; PII-span trap note). *v1.1:* honest-scope §1.1; gate signature; role-aware conferring; invalidation-aware mass; NFKC + tie-break hardening; tests 11–15; blinding invariant.
 
@@ -95,10 +97,14 @@ interface ProposedNode {
   evidence: ProposedEvidence[];   // may be empty for pure hypothesis seeds
 }
 
+type NodeRef =
+  | { kind: "PROPOSED"; tempId: string }   // a ProposedNode.tempId in this pass
+  | { kind: "EXISTING"; nodeId: string };  // a persisted PsycheNode id
+
 interface ProposedEdge {
   tempId: string;
-  sourceTempId: string;           // refers to a ProposedNode.tempId or existing node id
-  targetTempId: string;
+  source: NodeRef;                // v1.4 (D3): discriminated END-TO-END — identity
+  target: NodeRef;                // resolves by kind, never by string membership
   type: EdgeType;
   evidence: ProposedEvidence[];
 }
@@ -176,6 +182,7 @@ type RejectionReason =
   | "SOURCE_NOT_FOUND"         // cited a sourceEventId that doesn't exist
   | "SOURCE_INVALIDATED"       // cited an event that was superseded
   | "BELOW_MATERIALIZATION_THRESHOLD"  // valid but too little evidence yet
+  | "HELD_HIGH_INFERENCE"      // v1.4: held on inference distance, distinct from a recurrence hold
   | "EDGE_ENDPOINT_REJECTED"   // an edge whose node was rejected
   | "EMPTY_EVIDENCE_NON_HYPOTHESIS"  // extracted node with no evidence at all
   | "AMBIGUOUS_QUOTE";         // quote occurs multiple times, no offset to disambiguate
@@ -191,10 +198,18 @@ interface GateResult {
   rejected: RejectedItem[];
   gateVersion: string;             // for auditability
 }
-// ShadowCandidate mirrors the schema model (see schema.prisma): { candidateKey, type,
-// provenance, label, timesSeen, distinctSources, waitingReason, evidenceCache, ... }.
-// The gate takes the prior shadowBuffer in and returns the updated one out, so recurrence
-// accumulates deterministically across passes.
+// ShadowCandidate mirrors the schema model (see schema.prisma) and is, since
+// v1.4, a discriminated node|edge union: { candidateKey, kind, provenance,
+// timesSeen, distinctSources, waitingReason, inferenceDistance?, evidenceCache,
+// lastSeen } + node fields (type/label/ontologyKey) or edge fields
+// (edgeType/sourceKey/targetKey — EXISTING endpoints stored by node id,
+// PROPOSED endpoints by match key, stable across passes). inferenceDistance
+// stores the LOWEST distance seen across sightings. RejectedItem carries
+// stage:"GATE"; wrapper-stage rejections use the canonical WrapperRejection
+// (contract v2). The gate is the SOLE writer of "shadow" outcomes. AcceptedEdge
+// endpoints are NodeRef (PROPOSED tempIds aliased to their in-pass merge
+// representative). The gate takes the prior shadowBuffer in and returns the
+// updated one out, so recurrence accumulates deterministically across passes.
 ```
 
 ---
@@ -210,7 +225,7 @@ For each proposed node/edge, for each `ProposedEvidence`:
 
 Then, per item:
 - **Nodes:** partition evidence into verified vs. unverified. Drop the unverified. If the node's provenance is `EXTRACTED` and it has **zero** verified evidence → reject `EMPTY_EVIDENCE_NON_HYPOTHESIS`. If provenance is `LENS`/`BECOMING`/`PRACTITIONER`, zero evidence is *allowed* — it becomes a `HYPOTHESIS` node at mass 0 (LAW 3).
-- **Edges:** an edge survives only if BOTH endpoints survived (existing nodes or accepted-this-pass nodes). Otherwise `EDGE_ENDPOINT_REJECTED`. Edge evidence is verified the same way; an edge may exist as a low-confidence hypothesis if its endpoints exist but its own evidence is thin.
+- **Edges:** an edge survives only if BOTH `NodeRef` endpoints resolve by kind (EXISTING → prior graph id; PROPOSED → accepted-this-pass tempId). Otherwise `EDGE_ENDPOINT_REJECTED`. Edge evidence is verified the same way. **Non-causal edge types** (EXPRESSES_AS, REINFORCES, SOFTENED_BY, PROTECTS_FROM) may exist as low-confidence hypotheses when thin. **High-inference edge types** (DRIVES, ROOTED_IN — versioned config) below the §6.1 edge threshold do NOT materialize: a causal claim that renders at all, even dim, is the overreach being prevented — they wait in the edge shadow lane instead (v1.4, D2).
 
 **Critical rule:** the gate is *fail-closed*. Any uncertainty about whether a quote is present resolves to rejection. It is always safe to reject a true proposal (the evidence will recur and be caught next pass); it is never safe to accept a false one.
 
@@ -259,6 +274,10 @@ Practitioner-authored evidence (LAW 3) has `authorship !== SELF` → never confe
 
 ### 6.1 Materialization threshold
 A node materializes (becomes a real graph node) only when it clears a conservative threshold. v1 rule: **≥ 2 distinct conferring evidence spans from ≥ 2 distinct source events** (recurrence, not a single mention). Valid-but-subthreshold proposals go to the `shadowBuffer` — retained and re-evaluated as new events arrive, never discarded (nothing is deleted). Hypothesis-provenance nodes (lens/becoming/practitioner) skip this and materialize at mass 0 in `HYPOTHESIS` state.
+
+**Inference-aware materialization (v1.4, D1).** An EXTRACTED candidate whose **lowest-seen** `inferenceDistance` across sightings is `HIGH_INFERENCE_INTERPRETATION` is held in the shadow buffer with reason `HELD_HIGH_INFERENCE` **regardless of recurrence** — perfect recurring quotes do not materialize an overreaching interpretation. A later sighting at any lower distance releases the candidate to the normal thresholds (proposer spec §8's "recurrence at lower inference distance," made deterministic; the lowest-seen aggregation is what makes release possible — a max-wins rule would hold forever). The classification is model-assigned and unverifiable (§1.1); the asymmetry is what makes it safe to consume: the label can only **restrict** (delay until corroboration), never create. An absent label follows normal rules. Merges into already-materialized nodes are unaffected (the node is already real; evidence just attaches).
+
+**Edge materialization (v1.4, D2).** High-inference edge types (`DRIVES`, `ROOTED_IN` — named, versioned config `edgeMaterialization`) require **≥ 2 conferring spans from ≥ 2 distinct source events** to materialize; below that they wait as `kind:"edge"` shadow candidates, keyed `EDGE::type::srcKey=>tgtKey`, accumulating evidence exactly like node candidates and promoting with their cache when the threshold clears.
 
 ### 6.2 Mass
 ```
@@ -338,6 +357,9 @@ These are the highest-priority tests in the repository.
 13. **Invalidation-aware mass test.** Building a node from evidence, then invalidating/superseding that source, reduces the node's mass on recompute (a correction actually corrects).
 14. **Becoming-conferring test.** A BECOMING declaration (role=DECLARATION, SELF) yields mass 0; later ENACTMENT evidence (SELF) charges it toward ignition. Restating the wish never ignites.
 15. **Interpretation-guard test (solo mode).** A single model-labeled COUNTERVAILING quote does NOT auto-transition a node to QUESTIONED/LOOSENING in solo mode without corroboration or confirmation.
+
+16. **Inference-hold test (v1.4).** A `HIGH_INFERENCE_INTERPRETATION` candidate with recurrence satisfied is held (`HELD_HIGH_INFERENCE`, in shadow), and a later lower-distance sighting releases it; an unclassified candidate follows normal thresholds (absence never restricts).
+17. **Edge-shadow test (v1.4).** A DRIVES/ROOTED_IN edge from a single event goes to the edge shadow lane (not rendered, not lost) and materializes with its promoted cache on second-source recurrence; non-causal thin edges still materialize as low-confidence hypotheses; a PROPOSED tempId colliding with an existing node id resolves by kind.
 
 Maintain a small **ground-truth eval corpus**: synthetic journals with hand-labeled expected nodes. A script scores extraction fidelity (precision/recall of accepted nodes vs. expected) end-to-end (proposer+gate). Re-run before promoting any proposer/model change; record the score. This is how "does the map feel true?" becomes a measured number rather than a vibe — and it is the September go/no-go instrument.
 
