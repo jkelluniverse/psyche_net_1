@@ -1,6 +1,6 @@
 // Proposer wrapper configuration — named and versioned (no magic numbers).
 
-import type { NodeType } from "../contracts/extraction-contracts";
+import type { ExtractableNodeType, NodeType } from "../contracts/extraction-contracts";
 
 /**
  * Solo mode is strengths-forward AT THE DATA LAYER (§7): WOUND is not
@@ -8,7 +8,7 @@ import type { NodeType } from "../contracts/extraction-contracts";
  * PATTERN. LENS and BECOMING are never proposable by extraction in any mode
  * (they enter through their own lanes).
  */
-export const SOLO_ALLOWED_NODE_TYPES: readonly NodeType[] = [
+export const SOLO_ALLOWED_NODE_TYPES: readonly ExtractableNodeType[] = [
   "SHADOW",
   "BELIEF",
   "PROTECTION",
@@ -17,7 +17,7 @@ export const SOLO_ALLOWED_NODE_TYPES: readonly NodeType[] = [
   "RESOURCE",
 ];
 
-export const PRACTITIONER_ALLOWED_NODE_TYPES: readonly NodeType[] = [
+export const PRACTITIONER_ALLOWED_NODE_TYPES: readonly ExtractableNodeType[] = [
   ...SOLO_ALLOWED_NODE_TYPES,
   "WOUND",
 ];

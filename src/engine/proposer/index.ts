@@ -17,6 +17,7 @@ export {
 export { applyPolicyGuards } from "./guards";
 export { parseEnvelope, validateCandidates } from "./parse";
 export { assertPolicyCoherent } from "./policy";
+export { buildModelOutputSchema } from "./model-schema";
 export {
   PRACTITIONER_ALLOWED_NODE_TYPES,
   PROPOSER_CONFIG_V1,

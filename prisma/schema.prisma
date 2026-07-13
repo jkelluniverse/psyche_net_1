@@ -433,7 +433,7 @@ model ExtractionRun {
   promptVersion   String
   ontologyVersion String
   gateVersion     String
-  contractVersion String    @default("v1")  // which extraction-contracts version this run spoke
+  contractVersion String    @default("v2.1")  // keep synced to CONTRACT_VERSION (round-2 C-7)
   promptTemplateHash String?  // hash of the exact rendered template (audit; human version strings drift)
   policySnapshot  Json?     // the server-derived ExtractionPolicy in force for this run (audit)
   tokensIn        Int?
@@ -484,16 +484,21 @@ model ShadowCandidate {
   kind          String    @default("node")   // "node" | "edge"
   type          NodeType?  // node candidates only
   label         String?    // node candidates only
+  // Novel ontology keys survive the shadow round-trip (round-2 A-4: without
+  // this the novelty confidence penalty silently never fires on promotion).
+  ontologyKey   String?    // node candidates only; first-seen wins
   edgeType      EdgeType?  // edge candidates only
-  sourceKey     String?    // edge: existing node id, or match key for in-pass nodes
-  targetKey     String?
+  // v2.1 (A-3): DISCRIMINATED endpoint refs — {"kind":"EXISTING","nodeId":…}
+  // or {"kind":"MATCH_KEY","key":…} — never inferred from string shape.
+  sourceRef     Json?      // edge candidates only
+  targetRef     Json?
   // Lowest-seen inference distance across sightings (gate spec v1.4 §6.1):
   // held while HIGH_INFERENCE_INTERPRETATION; released by lower-distance recurrence.
-  inferenceDistance String?
+  inferenceDistance String?  // values = the contract's InferenceDistance union; the gate is the only writer
   provenance    Provenance
   timesSeen     Int       @default(1)
   distinctSources Int     @default(1)
-  waitingReason String    // "BELOW_MATERIALIZATION_THRESHOLD" | "HELD_HIGH_INFERENCE"
+  waitingReason String    // "BELOW_MATERIALIZATION_THRESHOLD" | "HELD_HIGH_INFERENCE" | "WAITING_ENDPOINT"
   createdAt     DateTime  @default(now())
   lastSeen      DateTime  @default(now())
   // Accumulated verified evidence spans (promoted to real Evidence on materialization).

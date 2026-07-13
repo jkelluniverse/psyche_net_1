@@ -1,8 +1,10 @@
 # Citation Gate — Module Specification
 
-*Psyche-Net · the load-bearing wall · v1.4 · governs `/src/engine/citation-gate/`*
+*Psyche-Net · the load-bearing wall · v1.5 · governs `/src/engine/citation-gate/`*
 
-> **v1.4 changelog (REVIEW-01 automated round 1 — punch-list A-1/A-2/A-6, decisions D1–D3):** v1.3 shipped the inference-distance rule as prose with no carrier — this spec never mentioned inference, `ShadowCandidate` couldn't hold the classification, and no distinct waiting reason existed; that was a bug of the exact class the v1.3 round was written to kill, and it is now structural: §6.1 gains **inference-aware materialization** (an EXTRACTED candidate whose lowest-seen distance is `HIGH_INFERENCE_INTERPRETATION` is held in the shadow buffer regardless of recurrence — reason `HELD_HIGH_INFERENCE` — and released only by a sighting at lower distance; the model's label can only RESTRICT, never create). **The shadow lane now holds edges** (D2): high-inference edge types (DRIVES/ROOTED_IN, versioned config) below ≥2-spans/≥2-distinct-sources wait as `kind:"edge"` shadow candidates instead of materializing as premature low-confidence causal claims — v1.3's "thin edges materialize as hypotheses" now applies only to non-causal types. **Edge endpoints are `NodeRef` end-to-end** (D3, overriding the v1.2 flatten-to-strings resolution): identity resolves by `kind`, never string membership, so a model-minted tempId colliding with a real node id is unrepresentable. `RejectedItem` carries `stage`; wrapper-stage reasons are canonical (`WrapperRejectionReason`, contract v2). `CONTRACT_VERSION` → v2; gateVersion → v1.4. Tests 16–17 added.
+> **v1.5 changelog (REVIEW-01 round 2):** (1) **The minimal deterministic hypothesis-matcher lands** (forced by D5's required pipeline test, which was unimplementable without it): an EXTRACTED proposal whose exact normalized label equals an existing BECOMING node's label merges its independently-extracted evidence into the hypothesis node — blinding-preserving (the proposer never saw the hypothesis; the match happens here, downstream, in deterministic code; fuzzy/semantic matching stays post-pilot). The target node's type governs conferring, so ENACTMENT charges ignition and DECLARATION never does. (2) **The inference hold now covers edges of every type** (round 2 caught v1.4 holding nodes and causal types only, falsifying the proposer spec's unqualified claim). (3) **Shadow edge endpoints are discriminated refs** (`{kind:"EXISTING"|"MATCH_KEY"}`), never inferred from string shape, and an edge whose endpoint node is itself subthreshold waits under the new `WAITING_ENDPOINT` reason instead of dangling or dropping. (4) `ShadowCandidate.ontologyKey` persists (first-seen wins) so the novelty penalty actually fires on promotion. (5) §3.1 listings synced with contract v2.1 (`inferenceDistance`/`evidenceRationale`/`modelReportedConfidence` — rationale and confidence are telemetry the gate disregards); §6.3's formula shows the `hintFallbackSignal` term the code has carried since v1.3. Gate → v1.5, contract → v2.1. Test 18 added.
+>
+> *v1.4 changelog (REVIEW-01 automated round 1 — punch-list A-1/A-2/A-6, decisions D1–D3):** v1.3 shipped the inference-distance rule as prose with no carrier — this spec never mentioned inference, `ShadowCandidate` couldn't hold the classification, and no distinct waiting reason existed; that was a bug of the exact class the v1.3 round was written to kill, and it is now structural: §6.1 gains **inference-aware materialization** (an EXTRACTED candidate whose lowest-seen distance is `HIGH_INFERENCE_INTERPRETATION` is held in the shadow buffer regardless of recurrence — reason `HELD_HIGH_INFERENCE` — and released only by a sighting at lower distance; the model's label can only RESTRICT, never create). **The shadow lane now holds edges** (D2): high-inference edge types (DRIVES/ROOTED_IN, versioned config) below ≥2-spans/≥2-distinct-sources wait as `kind:"edge"` shadow candidates instead of materializing as premature low-confidence causal claims — v1.3's "thin edges materialize as hypotheses" now applies only to non-causal types. **Edge endpoints are `NodeRef` end-to-end** (D3, overriding the v1.2 flatten-to-strings resolution): identity resolves by `kind`, never string membership, so a model-minted tempId colliding with a real node id is unrepresentable. `RejectedItem` carries `stage`; wrapper-stage reasons are canonical (`WrapperRejectionReason`, contract v2). `CONTRACT_VERSION` → v2; gateVersion → v1.4. Tests 16–17 added.
 >
 > *v1.3 changelog (proposer-review round — the seam fix):** both reviewers found the proposer→gate seam break: `role`/`polarity` were in `ProposedEvidence` (v1.2) but were **dropped at `VerifiedEvidence`**, and §4's algorithm still computed `conferring` from authorship alone — so the becoming-ignition fix was disconnected end-to-end. Fixed: `VerifiedEvidence` now carries `role`/`polarity` through; §4 computes conferring per the full §6 rule; ignition is explicitly **ENACTMENT-role with a deterministic ≥2-spans/≥2-events threshold** (a single mislabeled declaration cannot ignite); `offsetHint` is explicitly **non-authoritative** (find all matches first; hint = tie-break only, never a locator, never creates or rejects evidence). **NEW REQUIREMENT — one canonical contract module:** all shared types (`ProposedEvidence`, `ProposedNode`, `ProposedEdge`, `ProposerOutput`, `VerifiedEvidence`, `GateResult`, `ShadowCandidate`) live in ONE versioned source file (`/src/engine/contracts/extraction-contracts.ts`), imported by both proposer and gate; `contractVersion` is stamped on every `ExtractionRun`. The two module specs *describe* the contracts; the code file *is* the contract. This round's root cause was maintaining contracts in two documents — that ends here.
 >
@@ -74,6 +76,7 @@ The proposer is replaceable and swappable (different models, different prompts).
 interface ProposedEvidence {
   sourceEventId: string;   // which event the quote is from
   quote: string;           // the EXACT substring the model claims supports this
+  evidenceRationale?: string; // telemetry/eval ONLY — the gate disregards it (v1.5 doc-sync)
   offsetHint?: number;     // approximate char offset of the quote in the source;
                            // used by the §5 multi-occurrence tie-break to pick the
                            // right occurrence. Absent → gate requires the quote to be
@@ -95,6 +98,8 @@ interface ProposedNode {
   label: string;
   ontologyKey?: string;           // may be a NEW key (loose ontology, META-01)
   evidence: ProposedEvidence[];   // may be empty for pure hypothesis seeds
+  inferenceDistance?: InferenceDistance; // per-PROPOSAL (§6.1 consumes it); v1.5 doc-sync
+  modelReportedConfidence?: number;      // telemetry ONLY — never confidence input
 }
 
 type NodeRef =
@@ -298,7 +303,8 @@ Confidence is distinct from mass. Mass = "how much weight"; confidence = "how su
 confidence = clamp01( base
                     + 0.15 * (distinctSourceCount - 1)   // corroboration across events
                     - 0.20 * contradictionSignal          // countervailing evidence
-                    - 0.25 * ontologyNovelty )            // a brand-new ontologyKey is less certain
+                    - 0.25 * ontologyNovelty              // a brand-new ontologyKey is less certain
+                    - 0.10 * hintFallbackSignal )         // far-hint first-match fallback (§5; v1.5 doc-sync)
 base = 0.4
 ```
 Hypothesis nodes start at a low confidence floor (e.g. 0.15) and rise only as lived evidence confirms them. Confidence is ALWAYS written; there is no "unknown = null" — unknown is represented as an explicit low number and rendered as such (LAW 5).
@@ -318,7 +324,8 @@ State transitions are a pure function `nextState(prev, evidenceSet, now)`; no ra
 ## 7. Idempotency, dedupe, and re-runs
 
 - The gate is **idempotent** over the same (proposals, sources): same input → same `GateResult`, including identical spans. No time-dependent behavior except where `now` is an explicit parameter (mass recency, dormancy) — and even then, same `now` → same output.
-- **Dedupe/merge:** if a proposal matches an existing node (same type + normalized label + overlapping evidence, per a documented match key), the gate merges evidence into the existing node rather than creating a duplicate, then recomputes arithmetic. Merge logic is deterministic and unit-tested.
+- **Dedupe/merge:** if a proposal matches an existing node (same type + normalized label + overlapping evidence, per a documented match key), the gate merges evidence into the existing node rather than creating a duplicate, then recomputes arithmetic. Merge logic is deterministic and unit-tested. **v1.5 — the hypothesis-matcher (exact-label, v1):** an EXTRACTED proposal whose normalized label exactly equals an existing BECOMING node's label merges into that hypothesis node (the target's type/provenance/label win; conferring computed against the target's type, so ENACTMENT charges ignition). This is the deterministic v1 form of §14's hypothesis-matching module; semantic/fuzzy matching is post-pilot.
+- **GateResult→Proposal outcome mapping (v1.5, C-3):** the post-gate writer — and only it — maps per-item outcomes onto persisted `Proposal` rows: accepted → `"accepted"`; hold reasons (`BELOW_MATERIALIZATION_THRESHOLD`, `HELD_HIGH_INFERENCE`, `WAITING_ENDPOINT`) → `"shadow"`; everything else rejected → `"rejected"`. Holds are excluded from rejection-rate telemetry. The wrapper never writes `"shadow"`. Wrapper/gate reason unions are disjoint by design (value-level arrays in the contract, tested), so a row's stage is recoverable from its reason alone.
 - **Re-runnability:** because the event store is immutable, the entire graph must be reconstructable by replaying all events through proposer+gate. In practice the proposer is non-deterministic, so we persist accepted results; but the *gate* stage alone, given persisted proposals, must replay identically. This is what makes the graph auditable.
 
 ---
@@ -361,6 +368,8 @@ These are the highest-priority tests in the repository.
 16. **Inference-hold test (v1.4).** A `HIGH_INFERENCE_INTERPRETATION` candidate with recurrence satisfied is held (`HELD_HIGH_INFERENCE`, in shadow), and a later lower-distance sighting releases it; an unclassified candidate follows normal thresholds (absence never restricts).
 17. **Edge-shadow test (v1.4).** A DRIVES/ROOTED_IN edge from a single event goes to the edge shadow lane (not rendered, not lost) and materializes with its promoted cache on second-source recurrence; non-causal thin edges still materialize as low-confidence hypotheses; a PROPOSED tempId colliding with an existing node id resolves by kind.
 
+18. **Pipeline ignition test (v1.5 — REQUIRED by the round-2 checkpoint; lives in the proposer suite).** Raw model output containing a DECLARATION and two ENACTMENTs, through the REAL wrapper and the REAL gate against a prior graph holding the becoming seed, reaches `IGNITED`; restating the wish through the same pipeline never does. Every future change to conferring semantics must keep this green — unit tests proved the gate; only an integration test proves the pipeline.
+
 Maintain a small **ground-truth eval corpus**: synthetic journals with hand-labeled expected nodes. A script scores extraction fidelity (precision/recall of accepted nodes vs. expected) end-to-end (proposer+gate). Re-run before promoting any proposer/model change; record the score. This is how "does the map feel true?" becomes a measured number rather than a vibe — and it is the September go/no-go instrument.
 
 ---
@@ -369,4 +378,4 @@ Maintain a small **ground-truth eval corpus**: synthetic journals with hand-labe
 
 Every distinctive claim Psyche-Net makes — "nothing is true until your life says so," "we show you your chart being wrong," "the instrument that shows what it doesn't know," the entire trust and safety story, the patent framing — reduces to this: *a deterministic gate that only lets validated, self-authored evidence confer reality on the map.* The beautiful physics, the constellation, the ceremonies are all downstream. If the gate is honest, the product is honest. Build it first. Test it hardest. Never route around it.
 
-*— End of citation gate spec v1.3. Provisional and revisable, like everything here — but the nine laws it enforces are not.*
+*— End of citation gate spec v1.5. Provisional and revisable, like everything here — but the nine laws it enforces are not.*

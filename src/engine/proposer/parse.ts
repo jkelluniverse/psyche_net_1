@@ -6,9 +6,9 @@ import type {
   EdgeType,
   EvidencePolarity,
   EvidenceRole,
+  ExtractableNodeType,
   InferenceDistance,
   NodeRef,
-  NodeType,
   ProposedEvidence,
 } from "../contracts/extraction-contracts";
 import type { WrapperRejection } from "../contracts/extraction-contracts";
@@ -194,7 +194,7 @@ export function validateCandidates(
     }
     nodes.push({
       tempId: n.tempId,
-      type: n.type as NodeType,
+      type: n.type as ExtractableNodeType,
       label: n.label,
       ...(isNonEmptyString(n.ontologyKey) ? { ontologyKey: n.ontologyKey } : {}),
       evidence: ev.evidence,

@@ -44,7 +44,9 @@ export function buildBlindedContext(input: ProposerInput): BlindedExtractionCont
       // Forbidden types are ABSENT from the ontology view, not discouraged —
       // asking the model to ignore a type you showed it invites leakage (§6).
       nodeTypes: input.ontology.nodeTypes
-        .filter((t) => input.policy.allowedNodeTypes.includes(t.type))
+        .filter((t) =>
+          (input.policy.allowedNodeTypes as readonly string[]).includes(t.type),
+        )
         .map((t) => ({ type: t.type, definition: t.definition })),
       knownOntologyKeys: [...input.ontology.knownOntologyKeys],
     },

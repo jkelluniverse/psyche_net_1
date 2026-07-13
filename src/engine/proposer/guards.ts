@@ -30,8 +30,10 @@ const THIRD_PARTY_SUBJECT_RE =
 export interface GuardResult {
   output: { nodes: ProposedNode[]; edges: ProposedEdge[] };
   dropped: WrapperRejection[];
-  /** C-4: EXTRACTED-evidence roles normalized to SUPPORT (telemetry count). */
-  roleNormalizedCount: number;
+  /** v1.3 (round-2 A-1): role labels pass through UNTOUCHED — counted here as
+   * telemetry only. Round 1's normalization reversed gate conservatism
+   * (aspirational quotes conferred mass) and severed the ignition supply. */
+  roleLabelCounts: { DECLARATION: number; ENACTMENT: number };
 }
 
 export function applyPolicyGuards(
@@ -107,11 +109,11 @@ export function applyPolicyGuards(
   });
 
   // Guard 2 — provenance is stamped by the wrapper; the model's field (if
-  // any) was already discarded at validation. C-4: role semantics belong to
-  // the becoming lane — on EXTRACTED evidence, DECLARATION/ENACTMENT labels
-  // are meaningless and would only zero mass, so they are deterministically
-  // normalized to SUPPORT (counted as telemetry, never a prompt rule).
-  let roleNormalizedCount = 0;
+  // any) was already discarded at validation. Roles pass through UNTOUCHED
+  // (round-2 A-1): a DECLARATION label is non-conferring on EVERY node type
+  // by the gate's rule — the label can only restrict mass, never create it —
+  // and ENACTMENT labels are the ignition supply for becoming-label merges.
+  const roleLabelCounts = { DECLARATION: 0, ENACTMENT: 0 };
   const outNodes: ProposedNode[] = surviving.map((n) => ({
     tempId: n.tempId,
     type: n.type,
@@ -119,9 +121,8 @@ export function applyPolicyGuards(
     label: n.label,
     ...(n.ontologyKey !== undefined ? { ontologyKey: n.ontologyKey } : {}),
     evidence: n.evidence.map((ev) => {
-      if (ev.role !== undefined && ev.role !== "SUPPORT") {
-        roleNormalizedCount++;
-        return { ...ev, role: "SUPPORT" as const };
+      if (ev.role === "DECLARATION" || ev.role === "ENACTMENT") {
+        roleLabelCounts[ev.role]++;
       }
       return ev;
     }),
@@ -165,5 +166,5 @@ export function applyPolicyGuards(
     });
   }
 
-  return { output: { nodes: outNodes, edges: outEdges }, dropped, roleNormalizedCount };
+  return { output: { nodes: outNodes, edges: outEdges }, dropped, roleLabelCounts };
 }

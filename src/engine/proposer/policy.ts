@@ -19,11 +19,6 @@ export function assertPolicyCoherent(policy: ExtractionPolicy): void {
       "ExtractionPolicy incoherent: WOUND cannot be an allowed node type in SOLO mode (LAW 7; proposer spec §7).",
     );
   }
-  for (const t of policy.allowedNodeTypes) {
-    if (t === "LENS" || t === "BECOMING") {
-      throw new Error(
-        `ExtractionPolicy incoherent: ${t} is never proposable by extraction — it enters through its own lane.`,
-      );
-    }
-  }
+  // LENS/BECOMING need no runtime check since contract v2.1: the
+  // ExtractableNodeType type makes them unrepresentable in allowedNodeTypes.
 }

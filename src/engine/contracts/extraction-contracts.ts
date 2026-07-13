@@ -14,7 +14,7 @@
 // where these values meet Prisma.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const CONTRACT_VERSION = "v2";
+export const CONTRACT_VERSION = "v2.1";
 
 // ── Closed enums (extensibility lives ONLY in ontologyKey — proposer §7.3) ──
 
@@ -28,6 +28,13 @@ export type NodeType =
   | "RESOURCE"
   | "BECOMING"
   | "LENS";
+
+/**
+ * v2.1: the types extraction may propose — LENS/BECOMING are unrepresentable
+ * in an ExtractionPolicy, not merely rejected by a constructor (the same
+ * unrepresentability move as NodeRef/D3). WOUND remains policy-governed.
+ */
+export type ExtractableNodeType = Exclude<NodeType, "LENS" | "BECOMING">;
 
 export type Provenance = "EXTRACTED" | "LENS" | "BECOMING" | "PRACTITIONER";
 
@@ -344,9 +351,46 @@ export interface WrapperRejection {
   detail: string;
 }
 
+/**
+ * Value-level reason sets (v2.1, C-3). The wrapper/gate reason unions are
+ * DISJOINT by design — Proposal rows recover their stage from the reason
+ * alone. Tested; do not add an overlapping member.
+ */
+export const GATE_REJECTION_REASONS: readonly RejectionReason[] = [
+  "QUOTE_NOT_FOUND",
+  "SOURCE_NOT_FOUND",
+  "SOURCE_INVALIDATED",
+  "BELOW_MATERIALIZATION_THRESHOLD",
+  "HELD_HIGH_INFERENCE",
+  "EDGE_ENDPOINT_REJECTED",
+  "EMPTY_EVIDENCE_NON_HYPOTHESIS",
+  "AMBIGUOUS_QUOTE",
+];
+export const WRAPPER_REJECTION_REASONS: readonly WrapperRejectionReason[] = [
+  "NODE_TYPE_NOT_ALLOWED_BY_POLICY",
+  "THIRD_PARTY_SUBJECT",
+  "SHAPE_INVALID",
+  "NO_VALID_EVIDENCE",
+  "DANGLING_EDGE_REF",
+  "CAP_EXCEEDED",
+];
+
 export type ShadowWaitingReason =
   | "BELOW_MATERIALIZATION_THRESHOLD"
-  | "HELD_HIGH_INFERENCE";
+  | "HELD_HIGH_INFERENCE"
+  /** v2.1 (A-3): the edge's evidence is sufficient but an endpoint node is
+   * itself still subthreshold — held until the endpoint materializes and the
+   * edge is re-sighted; never dropped, never dangling. */
+  | "WAITING_ENDPOINT";
+
+/**
+ * v2.1 (A-3): a shadow edge endpoint, DISCRIMINATED — never inferred from
+ * string shape. EXISTING → persisted node id. MATCH_KEY → the node's stable
+ * match key (type::normalizedLabel) for endpoints not yet persisted.
+ */
+export type ShadowEndpointRef =
+  | { kind: "EXISTING"; nodeId: string }
+  | { kind: "MATCH_KEY"; key: string };
 
 interface ShadowCandidateCommon {
   candidateKey: string;
@@ -386,8 +430,8 @@ export type ShadowCandidate =
   | (ShadowCandidateCommon & {
       kind: "edge";
       edgeType: EdgeType;
-      sourceKey: string;
-      targetKey: string;
+      sourceRef: ShadowEndpointRef;
+      targetRef: ShadowEndpointRef;
     });
 
 export interface GateResult {

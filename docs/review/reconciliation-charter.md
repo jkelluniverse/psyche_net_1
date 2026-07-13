@@ -27,6 +27,7 @@ This charter encodes the judgment used to reconcile dual-model spec reviews. The
 
 ## Hard rules for the orchestrator
 - Every finding gets exactly one classification and appears in the round's punch-list: `ACCEPTED / CHEAP / DEFERRED / REJECTED (reason)`.
+- **Evidence-semantics edits are never CHEAP** *(added by Jacob after proposer round 2 — v1.2's C-4 "tidy normalization" inverted the gate's conservatism and severed the ignition supply while every unit test stayed green)*: any edit that alters evidence semantics (role, polarity, conferring, inference distance) is ACCEPT-NOW tier with its own failing-first test — including an end-to-end pipeline test where the semantics span wrapper and gate — or it doesn't happen.
 - Every ACCEPT that changes a shared type touches the canonical contract module and BOTH specs in the same commit.
 - Reviews must state the exact spec version reviewed; findings against stale versions are marked `STALE-ALREADY-FIXED` (verify before dismissing — IDEA-013's seam break looked stale and wasn't).
 - Owned bugs are owned: the changelog says "this was a bug in vX.Y," never passive voice.

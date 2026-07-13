@@ -166,7 +166,7 @@ describe("edge-ref guard (NodeRef resolution)", () => {
     expect(droppedEdges.every((d) => d.reason === "DANGLING_EDGE_REF" && d.stage === "WRAPPER")).toBe(true);
   });
 
-  it("C-4: DECLARATION/ENACTMENT roles on EXTRACTED evidence are normalized to SUPPORT (deterministic, counted)", async () => {
+  it("A-1 (round 2): role labels pass through UNTOUCHED — the label can only restrict mass, never create it", async () => {
     const response = JSON.stringify({
       nodes: [
         {
@@ -175,6 +175,7 @@ describe("edge-ref guard (NodeRef resolution)", () => {
           label: "Saying yes",
           evidence: [
             { sourceEventId: "e1", quote: "saying yes when I want to say no", role: "ENACTMENT" },
+            { sourceEventId: "e1", quote: "I want to say no", role: "DECLARATION" },
           ],
         },
       ],
@@ -182,8 +183,29 @@ describe("edge-ref guard (NodeRef resolution)", () => {
     });
     const stub = stubModel(response);
     const result = await runProposer(input(), stub.call);
-    expect(result.output.nodes[0].evidence[0].role).toBe("SUPPORT");
-    expect(result.roleNormalizedCount).toBe(1);
+    // Round 1 normalized these to SUPPORT — which made aspirational quotes
+    // CONFER mass and made IGNITED unreachable. Never again: pass-through.
+    expect(result.output.nodes[0].evidence.map((e) => e.role)).toEqual([
+      "ENACTMENT",
+      "DECLARATION",
+    ]);
+    expect(result.roleLabelCounts).toEqual({ DECLARATION: 1, ENACTMENT: 1 });
+  });
+
+  it("C-13: a policy-dropped node takes its dependent edge down as DANGLING_EDGE_REF (guard ordering)", async () => {
+    const response = JSON.stringify({
+      nodes: [
+        { tempId: "w1", type: "WOUND", label: "Hurt", evidence: [{ sourceEventId: "e1", quote: "saying yes" }] },
+        { tempId: "p1", type: "PATTERN", label: "Saying yes", evidence: [{ sourceEventId: "e1", quote: "saying yes when I want to say no" }] },
+      ],
+      edges: [
+        { tempId: "g1", source: { kind: "PROPOSED", tempId: "p1" }, target: { kind: "PROPOSED", tempId: "w1" }, type: "PROTECTS_FROM", evidence: [] },
+      ],
+    });
+    const stub = stubModel(response);
+    const result = await runProposer(input({ policy: soloPolicy() }), stub.call);
+    const reasons = result.dropped.map((d) => `${d.tempId}:${d.reason}`).sort();
+    expect(reasons).toEqual(["g1:DANGLING_EDGE_REF", "w1:NODE_TYPE_NOT_ALLOWED_BY_POLICY"]);
   });
 });
 

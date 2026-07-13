@@ -11,7 +11,7 @@ if (!process.env.OPENAI_API_KEY) { console.error("OPENAI_API_KEY not set — cro
 const reviewerPrompt = readFileSync("docs/review/spec-reviewer-prompt.md", "utf8");
 const spec = readFileSync(specPath, "utf8");
 // Cross-references the reviewer needs for seam checks (keep in sync with the loop command):
-const xrefs = ["CLAUDE.md", "docs/citation-gate-spec.md", "prisma/schema.prisma"]
+const xrefs = ["CLAUDE.md", "docs/citation-gate-spec.md", "prisma/schema.prisma", "src/engine/contracts/extraction-contracts.ts"]
   .map(p => { try { return `\n\n===== CROSS-REFERENCE: ${p} =====\n` + readFileSync(p, "utf8"); } catch { return ""; } })
   .join("");
 

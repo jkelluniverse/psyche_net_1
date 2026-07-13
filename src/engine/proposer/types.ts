@@ -3,6 +3,7 @@
 
 import type {
   EdgeType,
+  ExtractableNodeType,
   InferenceDistance,
   NodeRef,
   NodeType,
@@ -21,8 +22,8 @@ import type {
  */
 export interface ExtractionPolicy {
   mode: "SOLO" | "PRACTITIONER_SUPPORTED";
-  /** The wrapper enforces this deterministically (§7 guard 1). */
-  allowedNodeTypes: NodeType[];
+  /** v2.1 (C-12): LENS/BECOMING are unrepresentable here, not just rejected. */
+  allowedNodeTypes: ExtractableNodeType[];
   practitionerRelationshipVerified: boolean;
   userConsentVersion: string;
   policyVersion: string;
@@ -85,7 +86,7 @@ export interface BlindedExtractionContext {
   };
   policy: {
     mode: ExtractionPolicy["mode"];
-    allowedNodeTypes: NodeType[];
+    allowedNodeTypes: ExtractableNodeType[];
     policyVersion: string;
   };
 }
@@ -97,7 +98,8 @@ export type CallModel = (req: { system: string; user: string }) => Promise<strin
 
 export interface RawValidatedNode {
   tempId: string;
-  type: NodeType;
+  /** Parse guarantees this (LENS/BECOMING fail the extractable enum). */
+  type: ExtractableNodeType;
   label: string;
   ontologyKey?: string;
   evidence: ProposedEvidence[];
@@ -127,8 +129,8 @@ export interface ProposerRunResult {
   dropped: WrapperRejection[];
   /** Candidates that failed per-candidate shape validation (§10.3). */
   rejectedCandidates: WrapperRejection[];
-  /** C-4: count of EXTRACTED-evidence roles normalized to SUPPORT (telemetry). */
-  roleNormalizedCount: number;
+  /** Role labels seen (telemetry only — roles pass through untouched, A-1). */
+  roleLabelCounts: { DECLARATION: number; ENACTMENT: number };
   /** Unknown ontology keys, log-only in v1 (§7 guard 3). */
   ontologyCandidates: { tempId: string; ontologyKey: string }[];
   runId: string;

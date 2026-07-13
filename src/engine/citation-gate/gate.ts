@@ -29,6 +29,7 @@ import type {
   InferenceDistance,
   NodeRef,
   NodeType,
+  ShadowEndpointRef,
   ProposedEvidence,
   ProposedNode,
   ProposerOutput,
@@ -208,6 +209,18 @@ export function gate(
   const existingByKey = new Map(
     priorGraph.nodes.map((n) => [matchKey(n.type, n.label), n] as const),
   );
+  // v1.5 (D5's pipeline test forced the seam): the minimal deterministic
+  // hypothesis-matcher. An EXTRACTED proposal whose normalized label exactly
+  // equals an existing BECOMING node's label merges its independently-
+  // extracted evidence into that hypothesis node — blinding-preserving (the
+  // proposer never saw the hypothesis; the match happens HERE, downstream,
+  // in deterministic code). Fuzzy/semantic matching stays the post-pilot
+  // module; v1 is exact normalized label.
+  const becomingByLabel = new Map(
+    priorGraph.nodes
+      .filter((n) => n.provenance === "BECOMING")
+      .map((n) => [normalizeQuote(n.label), n] as const),
+  );
   const existingIds = new Set(priorGraph.nodes.map((n) => n.id));
   const knownOntologyKeys = new Set<string>([
     ...config.knownOntologyKeys,
@@ -233,8 +246,18 @@ export function gate(
   }
 
   // ── Nodes ──────────────────────────────────────────────────────────────────
+  // Track nodes sent to shadow this pass, so edges pointing at them can WAIT
+  // instead of dangling (A-3).
+  const shadowedByTemp = new Map<string, string>(); // rep tempId → node candidateKey
   for (const [key, p] of groups) {
-    const { verified, failures } = verifyEvidence(p.evidence, p.type);
+    // Merge target: same-key existing node, or (for EXTRACTED proposals) an
+    // existing BECOMING hypothesis with the exact same normalized label.
+    const existingTarget =
+      existingByKey.get(key) ??
+      (p.provenance === "EXTRACTED" ? becomingByLabel.get(normalizeQuote(p.label)) : undefined);
+    // Conferring is computed against the TARGET node's type (an enactment of
+    // a becoming quality confers on the becoming node, not on a phantom).
+    const { verified, failures } = verifyEvidence(p.evidence, existingTarget?.type ?? p.type);
 
     if (p.provenance === "EXTRACTED") {
       if (p.evidence.length === 0) {
@@ -258,7 +281,7 @@ export function gate(
     // zero verified evidence — they become mass-0 HYPOTHESIS nodes (LAW 3).
     // Their failed evidence is silently dropped (fail-closed per quote).
 
-    const existing = existingByKey.get(key);
+    const existing = existingTarget;
     const shadow =
       !existing && p.provenance === "EXTRACTED" ? shadowByKey.get(key) : undefined;
 
@@ -294,7 +317,7 @@ export function gate(
           type: p.type,
           provenance: p.provenance,
           label: p.label,
-          ontologyKey: p.ontologyKey,
+          ontologyKey: (shadow?.kind === "node" ? shadow.ontologyKey : undefined) ?? p.ontologyKey, // first-seen wins (A-4)
           timesSeen: (shadow?.timesSeen ?? 0) + 1,
           distinctSources: new Set(cache.map((c) => c.sourceEventId)).size,
           waitingReason: heldHighInference
@@ -305,6 +328,7 @@ export function gate(
           lastSeen: now,
         });
         consumedShadowKeys.add(key);
+        shadowedByTemp.set(p.tempId, key);
         rejected.push({
           tempId: p.tempId,
           kind: "node",
@@ -322,11 +346,13 @@ export function gate(
     }
 
     // Arithmetic — mass, state, confidence: pure functions, versioned.
-    const massR = computeMass(combined, p.type, now, config);
+    const targetType = existing?.type ?? p.type;
+    const targetProvenance = existing?.provenance ?? p.provenance;
+    const massR = computeMass(combined, targetType, now, config);
     const stateR = nextState(
       existing?.state ?? "HYPOTHESIS",
       combined,
-      { nodeType: p.type, provenance: p.provenance },
+      { nodeType: targetType, provenance: targetProvenance },
       now,
       config,
     );
@@ -344,9 +370,10 @@ export function gate(
     acceptedNodes.push({
       tempId: p.tempId,
       ...(existing ? { existingNodeId: existing.id } : {}),
-      type: p.type,
-      provenance: p.provenance,
-      label: p.label,
+      // On merge, the TARGET node's identity wins (a becoming stays BECOMING).
+      type: existing?.type ?? p.type,
+      provenance: existing?.provenance ?? p.provenance,
+      label: existing?.label ?? p.label,
       ontologyKey: p.ontologyKey,
       // Newly verified spans, plus the promoted shadow cache on materialization.
       evidence: dedupeVerified([...(shadow?.evidenceCache ?? []), ...verified]),
@@ -365,20 +392,42 @@ export function gate(
   const acceptedByTemp = new Map(acceptedNodes.map((n) => [n.tempId, n] as const));
 
   // Resolve a NodeRef by KIND (never string-membership guessing — D3). The
-  // returned key is stable across passes: EXISTING → node id; PROPOSED → the
-  // node's match key (type::normalizedLabel) — used for edge shadow identity.
+  // returned ShadowEndpointRef is stable across passes: EXISTING → node id;
+  // PROPOSED → the node's match key. An endpoint whose node went to SHADOW
+  // this pass resolves as `waiting` (A-3): the edge holds instead of dangling.
   const resolveRef = (
     ref: NodeRef,
-  ): { ok: true; ref: NodeRef; key: string } | { ok: false } => {
+  ):
+    | { ok: true; waiting: false; ref: NodeRef; sref: ShadowEndpointRef }
+    | { ok: true; waiting: true; sref: ShadowEndpointRef }
+    | { ok: false } => {
     if (ref.kind === "PROPOSED") {
       const rep = tempAlias.get(ref.tempId) ?? ref.tempId;
       const n = acceptedByTemp.get(rep);
-      if (!n) return { ok: false };
-      return { ok: true, ref: { kind: "PROPOSED", tempId: rep }, key: matchKey(n.type, n.label) };
+      if (n) {
+        return {
+          ok: true,
+          waiting: false,
+          ref: { kind: "PROPOSED", tempId: rep },
+          sref: { kind: "MATCH_KEY", key: matchKey(n.type, n.label) },
+        };
+      }
+      const shadowKey = shadowedByTemp.get(rep);
+      if (shadowKey !== undefined) {
+        return { ok: true, waiting: true, sref: { kind: "MATCH_KEY", key: shadowKey } };
+      }
+      return { ok: false };
     }
     if (!existingIds.has(ref.nodeId)) return { ok: false };
-    return { ok: true, ref, key: ref.nodeId };
+    return {
+      ok: true,
+      waiting: false,
+      ref,
+      sref: { kind: "EXISTING", nodeId: ref.nodeId },
+    };
   };
+  const srefKey = (r: ShadowEndpointRef): string =>
+    r.kind === "EXISTING" ? `id:${r.nodeId}` : `mk:${r.key}`;
 
   for (const e of proposals.edges) {
     const src = resolveRef(e.source);
@@ -412,11 +461,9 @@ export function gate(
           )
         : undefined;
 
-    // High-inference edge types (DRIVES/ROOTED_IN) cannot auto-materialize
-    // below threshold — they wait in the shadow lane (v1.4 §6.1, D2).
     const em = config.edgeMaterialization;
     const isHighInferenceType = em.highInferenceEdgeTypes.includes(e.type);
-    const shadowKey = `EDGE::${e.type}::${src.key}=>${tgt.key}`;
+    const shadowKey = `EDGE::${e.type}::${srefKey(src.sref)}=>${srefKey(tgt.sref)}`;
     const edgeShadow = !existingEdge ? shadowByKey.get(shadowKey) : undefined;
 
     const combined = dedupeRecords([
@@ -425,27 +472,46 @@ export function gate(
       ...verified.map(toRecord),
     ]);
 
-    if (isHighInferenceType && !existingEdge) {
+    // v1.5 hold ladder for non-materialized edges (checked in order):
+    //  1. WAITING_ENDPOINT — an endpoint node is itself subthreshold (A-3);
+    //  2. HELD_HIGH_INFERENCE — lowest-seen distance is HIGH, ANY edge type
+    //     (A-2: the §8 rule now covers non-causal edges too);
+    //  3. BELOW_MATERIALIZATION_THRESHOLD — causal types under recurrence (D2).
+    if (!existingEdge) {
+      const lowestSeen = lowestDistance(
+        e.inferenceDistance,
+        edgeShadow?.inferenceDistance,
+        config.inference.distanceOrder,
+      );
+      const heldHighInference = lowestSeen === config.inference.heldDistance;
       const conferringSupporting = combined.filter(
         (r) => isConferring(r, null) && r.polarity === "SUPPORTING",
       );
       const spans = conferringSupporting.length;
       const distinct = new Set(conferringSupporting.map((r) => r.sourceEventId)).size;
-      if (spans < em.minConferringSpans || distinct < em.minDistinctSources) {
+      const belowCausalThreshold =
+        isHighInferenceType &&
+        (spans < em.minConferringSpans || distinct < em.minDistinctSources);
+      const waitingEndpoint = src.waiting || tgt.waiting;
+
+      if (waitingEndpoint || heldHighInference || belowCausalThreshold) {
         const cache = dedupeVerified([...(edgeShadow?.evidenceCache ?? []), ...verified]);
+        const waitingReason = waitingEndpoint
+          ? "WAITING_ENDPOINT"
+          : heldHighInference
+            ? "HELD_HIGH_INFERENCE"
+            : "BELOW_MATERIALIZATION_THRESHOLD";
         updatedShadow.set(shadowKey, {
           kind: "edge",
           candidateKey: shadowKey,
           provenance: "EXTRACTED",
           edgeType: e.type,
-          sourceKey: src.key,
-          targetKey: tgt.key,
+          sourceRef: src.sref,
+          targetRef: tgt.sref,
           timesSeen: (edgeShadow?.timesSeen ?? 0) + 1,
           distinctSources: new Set(cache.map((c) => c.sourceEventId)).size,
-          waitingReason: "BELOW_MATERIALIZATION_THRESHOLD",
-          ...(e.inferenceDistance !== undefined
-            ? { inferenceDistance: e.inferenceDistance }
-            : {}),
+          waitingReason,
+          ...(lowestSeen !== undefined ? { inferenceDistance: lowestSeen } : {}),
           evidenceCache: cache,
           lastSeen: now,
         });
@@ -454,8 +520,14 @@ export function gate(
           tempId: e.tempId,
           kind: "edge",
           stage: "GATE",
-          reason: "BELOW_MATERIALIZATION_THRESHOLD",
-          detail: `high-inference edge type ${e.type}: ${spans} conferring span(s) across ${distinct} distinct source(s); requires ≥${em.minConferringSpans} across ≥${em.minDistinctSources} — held in shadow buffer, not rendered`,
+          reason: waitingEndpoint || belowCausalThreshold
+            ? "BELOW_MATERIALIZATION_THRESHOLD"
+            : "HELD_HIGH_INFERENCE",
+          detail: waitingEndpoint
+            ? `an endpoint node is itself subthreshold — edge held (WAITING_ENDPOINT), re-evaluated when the endpoint materializes`
+            : heldHighInference
+              ? `lowest-seen inference distance is ${config.inference.heldDistance}; held until lower-distance recurrence`
+              : `high-inference edge type ${e.type}: ${spans} conferring span(s) across ${distinct} distinct source(s); requires ≥${em.minConferringSpans} across ≥${em.minDistinctSources} — held in shadow buffer, not rendered`,
         });
         continue;
       }
@@ -478,8 +550,8 @@ export function gate(
     acceptedEdges.push({
       tempId: e.tempId,
       ...(existingEdge ? { existingEdgeId: existingEdge.id } : {}),
-      source: src.ref,
-      target: tgt.ref,
+      source: (src as { ref: NodeRef }).ref,
+      target: (tgt as { ref: NodeRef }).ref,
       type: e.type,
       evidence: evidenceOut,
       strength: strengthR.value,

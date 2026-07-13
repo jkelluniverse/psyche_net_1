@@ -994,6 +994,146 @@ describe("test 15 — interpretation guard (solo mode, spec §1.1)", () => {
   });
 });
 
+describe("gate v1.5 — round-2 holds (A-2/A-3/A-4)", () => {
+  const P = (tempId: string) => ({ kind: "PROPOSED" as const, tempId });
+  const sources = () =>
+    sourceMap(
+      src("e1", JOURNAL_1),
+      src("e2", JOURNAL_2),
+      src("e3", "I protect everyone so no one sees me tired. I am so tired."),
+      src("e4", "Being tired is the cost of protecting everyone, I suppose."),
+    );
+  const twoNodes = () => [
+    node("n1", "Saying yes when I mean no", [
+      ev("e1", "saying yes when I want to say no"),
+      ev("e2", "I wanted to say no"),
+    ]),
+    node("n2", "Protecting everyone", [
+      ev("e3", "I protect everyone"),
+      ev("e4", "protecting everyone"),
+    ]),
+  ];
+
+  it("A-2: a HIGH-labeled NON-causal edge is held too — §8's rule now has a carrier for every edge type", () => {
+    const result = gate(
+      proposals(twoNodes(), [
+        {
+          tempId: "g1",
+          source: P("n1"),
+          target: P("n2"),
+          type: "REINFORCES",
+          evidence: [ev("e3", "I protect everyone so no one sees me tired")],
+          inferenceDistance: "HIGH_INFERENCE_INTERPRETATION",
+        },
+      ]),
+      sources(),
+      EMPTY_GRAPH,
+      [],
+      NOW,
+    );
+    expect(result.acceptedEdges).toHaveLength(0);
+    const held = result.shadowBuffer.find((c) => c.kind === "edge");
+    expect(held?.waitingReason).toBe("HELD_HIGH_INFERENCE");
+    // A later lower-distance sighting releases it (lowest-seen rule).
+    const pass2 = gate(
+      proposals(twoNodes(), [
+        {
+          tempId: "g2",
+          source: P("n1"),
+          target: P("n2"),
+          type: "REINFORCES",
+          evidence: [ev("e4", "the cost of protecting everyone")],
+          inferenceDistance: "DIRECT_BEHAVIOR",
+        },
+      ]),
+      sources(),
+      EMPTY_GRAPH,
+      result.shadowBuffer,
+      NOW,
+    );
+    expect(pass2.acceptedEdges).toHaveLength(1);
+    expect(pass2.acceptedEdges[0].evidence).toHaveLength(2); // promoted cache
+  });
+
+  it("A-3: an edge whose endpoint node is itself subthreshold WAITS (discriminated refs) — never dropped, never dangling", () => {
+    const oneMention = node("n2", "Protecting everyone", [ev("e3", "I protect everyone")]);
+    const pass1 = gate(
+      proposals([twoNodes()[0], oneMention], [
+        {
+          tempId: "g1",
+          source: P("n1"),
+          target: P("n2"), // n2 goes to shadow this pass
+          type: "REINFORCES",
+          evidence: [ev("e3", "no one sees me tired"), ev("e4", "Being tired is the cost")],
+        },
+      ]),
+      sources(),
+      EMPTY_GRAPH,
+      [],
+      NOW,
+    );
+    expect(pass1.acceptedEdges).toHaveLength(0);
+    const held = pass1.shadowBuffer.find((c) => c.kind === "edge");
+    expect(held?.waitingReason).toBe("WAITING_ENDPOINT");
+    if (held?.kind === "edge") {
+      expect(held.targetRef.kind).toBe("MATCH_KEY"); // discriminated, not string-sniffed
+    }
+    // Pass 2: the endpoint materializes and the edge is re-sighted → promotes
+    // with its cached evidence.
+    const pass2 = gate(
+      proposals(twoNodes(), [
+        {
+          tempId: "g2",
+          source: P("n1"),
+          target: P("n2"),
+          type: "REINFORCES",
+          evidence: [ev("e4", "protecting everyone, I suppose")],
+        },
+      ]),
+      sources(),
+      EMPTY_GRAPH,
+      pass1.shadowBuffer,
+      NOW,
+    );
+    expect(pass2.acceptedEdges).toHaveLength(1);
+    expect(pass2.acceptedEdges[0].evidence.length).toBeGreaterThanOrEqual(3); // 2 cached + 1 new
+  });
+
+  it("A-4: a novel ontologyKey survives the shadow round-trip and the novelty penalty actually fires on promotion", () => {
+    const key = "belief.selfabandonment.novel";
+    const pass1 = gate(
+      proposals([
+        node("n1", "Saying yes when I mean no", [ev("e1", "saying yes when I want to say no")], {
+          ontologyKey: key,
+        }),
+      ]),
+      sources(),
+      EMPTY_GRAPH,
+      [],
+      NOW,
+    );
+    expect(pass1.shadowBuffer[0].kind).toBe("node");
+    if (pass1.shadowBuffer[0].kind === "node") {
+      expect(pass1.shadowBuffer[0].ontologyKey).toBe(key);
+    }
+    const pass2 = gate(
+      proposals([
+        node("n9", "Saying yes when I mean no", [ev("e2", "I wanted to say no")], {
+          ontologyKey: key,
+        }),
+      ]),
+      sources(),
+      EMPTY_GRAPH,
+      pass1.shadowBuffer,
+      NOW,
+    );
+    expect(pass2.acceptedNodes).toHaveLength(1);
+    expect(pass2.acceptedNodes[0].ontologyKey).toBe(key);
+    expect(pass2.acceptedNodes[0].derivation.confidence.ontologyNovelty).toBe(1);
+    expect(pass2.ontologyCandidates).toEqual([{ tempId: "n9", ontologyKey: key }]);
+  });
+});
+
 describe("empty and versioned output", () => {
   it("empty proposer output is valid: empty sets, never a crash", () => {
     const result = gate(proposals(), sourceMap(), EMPTY_GRAPH, [], NOW);
@@ -1005,7 +1145,7 @@ describe("empty and versioned output", () => {
 
   it("every GateResult carries the full version stamp set (auditability)", () => {
     const result = gate(proposals(), sourceMap(), EMPTY_GRAPH, [], NOW);
-    expect(result.gateVersion).toBe("v1.4");
+    expect(result.gateVersion).toBe("v1.5");
     expect(result.normalizationVersion).toBe("v1");
     expect(result.massAlgorithmVersion).toBe("v1");
     expect(result.confidenceAlgorithmVersion).toBe("v1.1");
