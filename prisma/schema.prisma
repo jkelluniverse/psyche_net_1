@@ -1,0 +1,486 @@
+// Psyche-Net — Prisma schema
+// The event-sourced graph model. See /docs/psyche-net-master-concept.md §4.
+//
+// Core principle: SourceEvents are immutable ground truth. Everything else
+// (nodes, edges, mass, state) is DERIVED from validated evidence and must be
+// reproducible by replaying events. Nothing here stores a psyche claim that
+// did not pass the citation gate.
+//
+// v1 substrate = Postgres. Graphs are small per person (dozens–low hundreds of
+// nodes), so relational tables are entirely sufficient; Graphiti evaluation is
+// a post-pilot decision and does not change this model's shape.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IDENTITY
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  // Role governs which "skin" and which safety defaults apply (LAW 7).
+  role          UserRole  @default(INDIVIDUAL)
+  // Minors are excluded (LAW 7). Store verified adulthood, not birthdate, here.
+  ageVerified   Boolean   @default(false)
+  displayName   String?
+
+  // Birth data for the Lens lane (LENS-01). Optional; nullable by design.
+  // This is quasi-special-category PII — encrypt at rest; include in DPIA.
+  birthDate     DateTime?
+  birthTime     String?   // local time as string; precision varies, honestly stored
+  birthPlace    String?
+  birthLat      Float?
+  birthLng      Float?
+
+  sourceEvents  SourceEvent[]
+  nodes         PsycheNode[]
+  edges         PsycheEdge[]
+  experiments   Experiment[]
+  charts        ChartImport[]
+  safetyFlags   SafetyFlag[]
+  // Practitioner ↔ client links (a practitioner user has many clients).
+  clientLinks   PractitionerClient[] @relation("practitioner")
+  practitioners PractitionerClient[] @relation("client")
+
+  @@index([role])
+}
+
+enum UserRole {
+  INDIVIDUAL
+  PRACTITIONER
+  ADMIN
+}
+
+model PractitionerClient {
+  id             String   @id @default(cuid())
+  practitioner   User     @relation("practitioner", fields: [practitionerId], references: [id])
+  practitionerId String
+  client         User     @relation("client", fields: [clientId], references: [id])
+  clientId       String
+  createdAt      DateTime @default(now())
+  // Client controls what the practitioner may see (consent, LAW 8).
+  consentScope   Json     @default("{}")
+
+  @@unique([practitionerId, clientId])
+  @@index([practitionerId])
+  @@index([clientId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GROUND TRUTH: the immutable event store (LAW 1, event-sourcing invariant)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Every input a person provides is an immutable, timestamped SourceEvent.
+// Nodes/edges cite SPANS within these events. Events are never edited or
+// deleted in place; correction = a new event + invalidation. (True deletion for
+// LAW 8 is a separate, audited erasure path, not an UPDATE.)
+model SourceEvent {
+  id           String        @id @default(cuid())
+  user         User          @relation(fields: [userId], references: [id])
+  userId       String
+
+  kind         SourceKind
+  // The raw text the person actually produced (or a transcript of their voice).
+  // For AUTHORSHIP: only the person's own words live here. Words ABOUT them by a
+  // practitioner are stored with authorship = PRACTITIONER and never confer mass.
+  content      String
+  authorship   Authorship    @default(SELF)
+
+  // occurredAt = when the content is about / was written (may predate ingest,
+  // e.g. an archived 2019 journal — critical for temporal honesty, ARCH-01).
+  // ingestedAt = when it entered the system. Bi-temporal by design.
+  occurredAt   DateTime
+  ingestedAt   DateTime      @default(now())
+
+  // Corroboration signals attach here but NEVER create nodes (LAW 4).
+  // e.g. { "prosody": {...}, "bodySignals": {...} }
+  signals      Json?
+
+  // If this event was invalidated/superseded, when and by what.
+  invalidatedAt DateTime?
+  supersededById String?
+
+  evidence     Evidence[]
+
+  @@index([userId, occurredAt])
+  @@index([userId, kind])
+  @@index([invalidatedAt])
+}
+
+enum SourceKind {
+  JOURNAL_TEXT
+  JOURNAL_VOICE      // transcript stored in content; audio ref (if any) in signals
+  WORKSHEET_ANSWER
+  INTAKE_SPARK       // one of the Seven Sparks (INTAKE-01)
+  ARCHIVE_IMPORT     // historical corpus (ARCH-01)
+  EXPERIMENT_RESULT  // person's own words reporting an experiment outcome
+  PRACTITIONER_NOTE  // authorship = PRACTITIONER; hypothesis-only
+}
+
+enum Authorship {
+  SELF          // the person's own words → can confer mass
+  PRACTITIONER  // someone else's words about them → hypothesis only (LAW 3)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE LENS LANE (LENS-01): symbolic chart imports → hypothesis nodes only
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ChartImport {
+  id         String    @id @default(cuid())
+  user       User      @relation(fields: [userId], references: [id])
+  userId     String
+  system     String    // "human_design" | "western_natal" | ...
+  raw        Json      // full API response (astrology-api.io)
+  summary    String?   // LLM-ready summary if provided
+  importedAt DateTime  @default(now())
+
+  lensNodes  PsycheNode[]  // lens-provenance nodes derived from this chart
+
+  @@index([userId, system])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE DERIVED GRAPH: nodes, edges, evidence (never written except via the gate)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PsycheNode {
+  id           String       @id @default(cuid())
+  user         User         @relation(fields: [userId], references: [id])
+  userId       String
+
+  type         NodeType
+  provenance   Provenance   // one gate, four doors (LAW 3)
+  // The person's own label where possible; the ontology's where necessary.
+  label        String
+  // Ontology key for the loose/self-revising ontology (META-01). If the
+  // extractor proposes a type not in the current ontology, it is logged as a
+  // candidate here rather than silently forced into a bucket.
+  ontologyKey  String?
+
+  // LENS-provenance nodes trace back to the chart they came from (they have no
+  // SourceEvent evidence at birth — this is their provenance link). Nullable;
+  // set only for provenance = LENS. (Fixes: lens nodes were previously untethered.)
+  chartImport   ChartImport? @relation(fields: [chartImportId], references: [id])
+  chartImportId String?
+
+  // Version stamps so tuned arithmetic stays auditable (no un-versioned tuning).
+  massAlgorithmVersion       String @default("v1")
+  confidenceAlgorithmVersion String @default("v1")
+  stateAlgorithmVersion      String @default("v1")
+  gateVersion                String @default("v1")
+  computedAt                 DateTime @default(now())
+
+  // DERIVED, PURE FUNCTIONS of validated evidence. Never set by a model.
+  mass         Float        @default(0)     // 0 for uncharged hypothesis nodes
+  confidence   Float        @default(0)     // LAW 5 — always present, never null-as-unknown
+  state        NodeState    @default(ACTIVE)
+  luminosity   Float        @default(0)     // recency/activity + integration
+
+  // Rendering hints (position may be engine-managed; persisted for continuity).
+  x            Float?
+  y            Float?
+  colorHint    String?
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  // Nodes are never hard-deleted by the app; they dim/integrate. True erasure
+  // is the LAW 8 path only.
+  archivedAt   DateTime?
+
+  evidence     Evidence[]
+  outEdges     PsycheEdge[] @relation("source")
+  inEdges      PsycheEdge[] @relation("target")
+  experiments  Experiment[]
+
+  @@index([userId, type])
+  @@index([userId, provenance])
+  @@index([userId, state])
+}
+
+enum NodeType {
+  WOUND
+  SHADOW
+  BELIEF
+  PROTECTION
+  PATTERN
+  TRAIT
+  RESOURCE
+  BECOMING     // ASPIRE-01 — designed future quality; ignites into RESOURCE
+  LENS         // LENS-01 — symbolic hypothesis; charged only by lived evidence
+}
+
+enum Provenance {
+  EXTRACTED     // proposed from the person's own text
+  LENS          // from a birth chart / symbolic system
+  BECOMING      // authored intention
+  PRACTITIONER  // a practitioner's observation
+}
+
+// The change state machine (CORE-03). Transitions are deterministic functions
+// of the evidence stream, computed by pure code — never by a model.
+enum NodeState {
+  HYPOTHESIS              // zero mass; awaiting lived evidence (lens/becoming/practitioner)
+  ACTIVE
+  QUESTIONED              // counter-evidence has appeared but weakening not yet demonstrated
+                          // NOTE: entry depends on model-assigned polarity (see gate spec §1.1);
+                          // in solo mode requires corroboration/confirmation, not model label alone.
+  LOOSENING
+  TRANSMUTATION_CANDIDATE
+  INTEGRATED
+  IGNITED                 // a BECOMING node that reached threshold → real resource
+  CONTRADICTED            // lens node opposed by lived evidence
+  DORMANT                 // "documented then, quiet now" (ARCH-01 temporal honesty)
+}
+
+model PsycheEdge {
+  id          String     @id @default(cuid())
+  user        User       @relation(fields: [userId], references: [id])
+  userId      String
+
+  source      PsycheNode @relation("source", fields: [sourceId], references: [id])
+  sourceId    String
+  target      PsycheNode @relation("target", fields: [targetId], references: [id])
+  targetId    String
+
+  type        EdgeType
+  strength    Float      @default(0)   // derived
+  confidence  Float      @default(0)   // LAW 5
+  recency     Float      @default(0)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  archivedAt  DateTime?
+
+  evidence    Evidence[]
+
+  @@unique([sourceId, targetId, type])
+  @@index([userId])
+}
+
+enum EdgeType {
+  DRIVES
+  PROTECTS_FROM
+  EXPRESSES_AS
+  ROOTED_IN
+  REINFORCES
+  SOFTENED_BY
+}
+
+// The evidence pointer: the heart of LAW 1. Every node and edge is backed by
+// one or more of these, each pointing at an EXACT span in a SourceEvent that
+// the citation gate has VERIFIED exists. No Evidence row is created unless its
+// quote was found in the source at [spanStart, spanEnd].
+model Evidence {
+  id           String       @id @default(cuid())
+
+  sourceEvent  SourceEvent  @relation(fields: [sourceEventId], references: [id])
+  sourceEventId String
+
+  // Exactly one of node/edge is set (the thing this evidence supports).
+  node         PsycheNode?  @relation(fields: [nodeId], references: [id])
+  nodeId       String?
+  edge         PsycheEdge?  @relation(fields: [edgeId], references: [id])
+  edgeId       String?
+
+  // The verified quote and its character span in the source content.
+  quote        String
+  spanStart    Int
+  spanEnd      Int
+
+  // For temporal honesty & mass math: the moment this evidence is "about".
+  occurredAt   DateTime
+
+  // The evidence's ROLE — critical for the becoming lane (fixes the conferring bug).
+  // A BECOMING seed's originating wish is a DECLARATION and must NOT charge the
+  // node toward ignition; only ENACTMENT evidence (the person actually living the
+  // quality) confers mass. "conferring" is therefore NOT authorship alone — it is:
+  //   conferring = (authorship == SELF) AND (role == ENACTMENT for BECOMING nodes;
+  //                                          role == SUPPORT for all other types)
+  role         EvidenceRole @default(SUPPORT)
+
+  // Polarity is MODEL-ASSIGNED (the gate cannot verify meaning, only existence).
+  // Drives QUESTIONED/LOOSENING/CONTRADICTED transitions; treat as untrusted
+  // interpretation guarded by recurrence + confidence + curation (gate spec §1.1).
+  polarity     EvidencePolarity @default(SUPPORTING)
+
+  // Which normalization rule set verified this quote (replay/audit).
+  normalizationVersion String @default("v1")
+
+  // Set true ONLY by the deterministic validator. Enforced by a DB CHECK
+  // constraint (validated = true) via migration so an unvalidated row is
+  // insertion-impossible, not merely alarmed after the fact.
+  validated    Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+
+  // DB CHECK (added in migration, not expressible in pure Prisma schema):
+  //   - (nodeId IS NULL) <> (edgeId IS NULL)   -- exactly one target
+  //   - validated = true                        -- no unvalidated evidence persists
+  @@index([sourceEventId])
+  @@index([nodeId])
+  @@index([edgeId])
+}
+
+enum EvidenceRole {
+  SUPPORT       // ordinary supporting evidence for a node/edge
+  DECLARATION   // a BECOMING seed's originating wish — creates seed, confers NO mass
+  ENACTMENT     // evidence the person actually lived the quality — confers mass toward ignition
+}
+
+enum EvidencePolarity {
+  SUPPORTING    // model says this real quote supports the node
+  COUNTERVAILING // model says this real quote opposes the node (untrusted interpretation)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE AUTHORSHIP LOOP (AUTH-01 / MOVE-01): experiments + belief-decay telemetry
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Experiment {
+  id            String            @id @default(cuid())
+  user          User              @relation(fields: [userId], references: [id])
+  userId        String
+
+  // The node this experiment targets (a belief to test, a becoming to charge).
+  targetNode    PsycheNode        @relation(fields: [targetNodeId], references: [id])
+  targetNodeId  String
+
+  // The authored if-then plan ("when X fires, I will Y").
+  plan          String
+  // The testable prediction in the person's own words.
+  prediction    String
+
+  status        ExperimentStatus  @default(RUNNING)
+  windowStart   DateTime          @default(now())
+  windowEnd     DateTime?
+
+  // Confidence readings over time = the belief-decay chart (SEED-J). Each entry
+  // { at: ISO, confidence: 0..1 }. Confidence is self-reported; OUTCOME is
+  // judged by the citation gate against subsequent SELF-authored evidence, not
+  // by a checkbox (prevents Goodharting).
+  confidenceLog Json              @default("[]")
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([userId, status])
+  @@index([targetNodeId])
+}
+
+enum ExperimentStatus {
+  RUNNING
+  CONFIRMED     // lived evidence charged it
+  INCONCLUSIVE
+  CONTRADICTED  // lived evidence opposed it
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SAFETY (LAW 7): crisis flags routed to human support, never buried
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SafetyFlag {
+  id            String        @id @default(cuid())
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String
+  sourceEventId String?
+  severity      SafetySeverity
+  // Detected on-device where feasible; server record is minimal by design.
+  handledAt     DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@index([userId, createdAt])
+}
+
+enum SafetySeverity {
+  WATCH
+  ELEVATED
+  CRISIS
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PIPELINE PROVENANCE: the extraction process is itself recorded (auditability)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// One row per extraction pass. Makes the gate's "replay over persisted proposals"
+// claim real: proposals are persisted against a run, so the deterministic gate
+// stage can be replayed without re-invoking the non-deterministic proposer.
+model ExtractionRun {
+  id              String    @id @default(cuid())
+  userId          String
+  provider        String    // e.g. "anthropic"
+  model           String    // e.g. "claude-..." — the untrusted proposer
+  promptVersion   String
+  ontologyVersion String
+  gateVersion     String
+  tokensIn        Int?
+  tokensOut       Int?
+  costUsd         Float?
+  startedAt       DateTime  @default(now())
+  finishedAt      DateTime?
+  status          String    // "running" | "complete" | "error"
+
+  proposals       Proposal[]
+
+  @@index([userId, startedAt])
+}
+
+// Persisted proposer output (accepted AND rejected) — telemetry for improving
+// prompts/extraction, and the substrate the gate replays over. Rejected rows are
+// valuable signal, not noise.
+model Proposal {
+  id             String        @id @default(cuid())
+  run            ExtractionRun @relation(fields: [runId], references: [id])
+  runId          String
+  kind           String        // "node" | "edge"
+  payload        Json          // the raw ProposedNode / ProposedEdge
+  outcome        String        // "accepted" | "rejected" | "shadow"
+  rejectionReason String?
+  createdAt      DateTime      @default(now())
+
+  @@index([runId])
+  @@index([outcome])
+}
+
+// First-class shadow buffer (was an in-memory return value only — which lost
+// recurrence history between passes). A valid-but-subthreshold candidate lives
+// here, accumulating sightings until it clears its (construct-specific) threshold.
+// Nothing is discarded (nothing is ever deleted); this is where "held, not lost" lives.
+model ShadowCandidate {
+  id            String    @id @default(cuid())
+  userId        String
+  // Stable identity so repeat sightings increment rather than duplicate.
+  candidateKey  String    // e.g. hash(type + normalizedLabel)
+  type          NodeType
+  provenance    Provenance
+  label         String
+  timesSeen     Int       @default(1)
+  distinctSources Int     @default(1)
+  waitingReason String    // e.g. "BELOW_MATERIALIZATION_THRESHOLD"
+  createdAt     DateTime  @default(now())
+  lastSeen      DateTime  @default(now())
+  // Accumulated verified evidence spans (promoted to real Evidence on materialization).
+  evidenceCache Json      @default("[]")
+
+  @@unique([userId, candidateKey])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEFERRED (confirmed conscious, not accidental):
+//  - LAW 8 true-erasure path: event-sourcing makes real deletion HARDER, so this
+//    needs a deliberate design (crypto-shredding or hard-delete-with-tombstone),
+//    NOT a retrofit. Out for the Sept demo; must be designed before any real PII.
+//  - k-floored privacy wall + Postgres RLS: out for v1; RLS is a DB-policy concern
+//    Prisma won't surface, so it lives outside this file by design.
+//  - luminosity formula: field exists on PsycheNode; its defining function is
+//    DEFERRED (per-node light is enough for the demo; global cumulative luminosity
+//    is post-pilot). Do not compute it ad hoc — specify before use.
+// ─────────────────────────────────────────────────────────────────────────────
