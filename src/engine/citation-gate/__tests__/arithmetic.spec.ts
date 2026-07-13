@@ -134,6 +134,11 @@ describe("conferring rule (§6 — role-aware, not authorship alone)", () => {
     expect(isConferring(rec(1, { role: "ENACTMENT" }), "BELIEF")).toBe(true);
     expect(isConferring(rec(1, { role: "DECLARATION" }), "BELIEF")).toBe(false);
   });
+  it("fail-closed at the boundary: an unknown role value never confers (allowlist, not denylist)", () => {
+    const corrupted = rec(1, { role: "FUTURE_ROLE" as never });
+    expect(isConferring(corrupted, "BELIEF")).toBe(false);
+    expect(isConferring(corrupted, "BECOMING")).toBe(false);
+  });
   it("an invalidated source never confers", () => {
     expect(isConferring(rec(1, { sourceInvalidatedAt: NOW }), "BELIEF")).toBe(false);
   });

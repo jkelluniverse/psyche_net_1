@@ -232,8 +232,9 @@ export interface VerifiedEvidence {
   polarity: EvidencePolarity;
   /**
    * conferring = authorship SELF ∧ source not invalidated ∧ role rule
-   * (ENACTMENT for BECOMING nodes, SUPPORT otherwise) — §6. NOT authorship
-   * alone. Only conferring, SUPPORTING-polarity evidence contributes to mass.
+   * (BECOMING: ENACTMENT only; all other types: SUPPORT or ENACTMENT —
+   * gate v1.6/D8; DECLARATION confers nowhere) — §6. NOT authorship alone.
+   * Only conferring, SUPPORTING-polarity evidence contributes to mass.
    */
   conferring: boolean;
   normalizationVersion: string;

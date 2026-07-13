@@ -28,7 +28,12 @@ export function isConferring(
 ): boolean {
   if (e.authorship !== "SELF") return false;
   if (e.sourceInvalidatedAt != null) return false;
-  return nodeType === "BECOMING" ? e.role === "ENACTMENT" : e.role !== "DECLARATION";
+  // ALLOWLIST, not denylist (diff-verification MAJOR): an unknown or
+  // corrupted role value defaults to NON-conferring — fail closed at the
+  // trust boundary. Behavior-identical to D8 over the closed enum.
+  return nodeType === "BECOMING"
+    ? e.role === "ENACTMENT"
+    : e.role === "SUPPORT" || e.role === "ENACTMENT";
 }
 
 function recencyWeight(occurredAt: Date, now: Date, halfLifeDays: number): number {
