@@ -10,13 +10,14 @@ import { redirect } from "next/navigation";
 // SEED NOTE (from valentinaapp scaffolding): this module expects auth fields on
 // User (email, passwordHash, active) that the committed Psyche-Net schema does
 // not yet define — wiring auth up is a pending schema decision, deliberately
-// NOT smuggled into the pasted schema. Roles are adapted to the Psyche-Net
-// enum (INDIVIDUAL | PRACTITIONER | ADMIN).
+// Roles are adapted to the Psyche-Net enum (INDIVIDUAL | PRACTITIONER | ADMIN).
+// The schema's display handle is `displayName`; we surface it as `name` so the
+// NextAuth session shape stays conventional.
 
 export type SessionUser = {
   id: string;
   name: string | null;
-  email: string;
+  email: string | null;
   role: "INDIVIDUAL" | "PRACTITIONER" | "ADMIN";
   active: boolean;
 };
@@ -26,9 +27,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   if (!session?.user?.email) return null;
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, name: true, email: true, role: true, active: true },
+    select: { id: true, displayName: true, email: true, role: true, active: true },
   });
-  return user as SessionUser | null;
+  if (!user) return null;
+  const { displayName, ...rest } = user;
+  return { ...rest, name: displayName };
 }
 
 export async function requirePractitioner(): Promise<SessionUser> {

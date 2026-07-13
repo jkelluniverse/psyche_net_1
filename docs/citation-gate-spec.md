@@ -1,8 +1,10 @@
 # Citation Gate — Module Specification
 
-*Psyche-Net · the load-bearing wall · v1.1 · governs `/src/engine/citation-gate/`*
+*Psyche-Net · the load-bearing wall · v1.2 · governs `/src/engine/citation-gate/`*
 
-> **v1.1 changelog (dual-review integration, Claude + ChatGPT):** added §1.1 (honest scope — gate verifies words, not interpretation; solo-mode transition guard); corrected the gate signature to take `priorGraph`, `shadowBuffer`, `now` explicitly (§3.1a); fixed the conferring rule to include an evidence *role* dimension so becoming-declarations don't self-ignite (§6); made mass invalidation-aware (§6); hardened span-mapping against length-changing NFKC + added multi-occurrence tie-break (§5); added tests 11–15; added `AMBIGUOUS_QUOTE`. Schema gained `ExtractionRun`, `Proposal`, `ShadowCandidate`, lens FK, `QUESTIONED` state, evidence `role`/`polarity`, version stamps, and CHECK-constraint intent. Full reconciliation lives in the originating build thread.
+> **v1.2 changelog (implementation-surfaced contract fixes, from the first Claude Code build):** building the gate exposed two spec inconsistencies that survived two review rounds — now corrected. (1) `ProposedEvidence` (§3.1) now carries `offsetHint`, `role`, and `polarity` — the §5 tie-break and §6 conferring rule *described* these behaviors but the input interface didn't thread them through. (2) `GateResult.shadowBuffer` (§3.3) is now `ShadowCandidate[]`, not the literal `ProposedNode[]` — recurrence (`timesSeen`/`distinctSources`) can't accumulate across passes on a raw proposal. Also added the PII-redaction span-preservation trap note (§5, OUT of v1). Reference build: 75 tests green, keystone rejection test + NFKC span test #11 (with genuinely length-changing fixtures) passing, mutation-tested, DB CHECK constraints verified against live Postgres 16.
+>
+> *v1.1 changelog (Round A):* §1.1 honest-scope; gate signature takes priorGraph/shadowBuffer/now; conferring role dimension; invalidation-aware mass; NFKC span-mapping + multi-occurrence hardening; tests 11–15; AMBIGUOUS_QUOTE; proposer-blinding invariant.
 
 > This is the single most important module in the codebase. It is the deterministic trust boundary between what an LLM *claims* about a person and what becomes true on their map. Build it first, test it first, and never let anything write graph state that bypasses it. If this module is correct, LAW 1 (evidence mandate) and LAW 2 (citation gate) hold structurally rather than by good intentions.
 
@@ -70,6 +72,18 @@ The proposer is replaceable and swappable (different models, different prompts).
 interface ProposedEvidence {
   sourceEventId: string;   // which event the quote is from
   quote: string;           // the EXACT substring the model claims supports this
+  offsetHint?: number;     // approximate char offset of the quote in the source;
+                           // used by the §5 multi-occurrence tie-break to pick the
+                           // right occurrence. Absent → gate requires the quote to be
+                           // unique or rejects it AMBIGUOUS_QUOTE.
+  role?: EvidenceRole;     // SUPPORT | DECLARATION | ENACTMENT (§6 conferring rule).
+                           // A BECOMING seed's originating wish is DECLARATION and
+                           // does NOT confer mass; only ENACTMENT charges toward ignition.
+                           // Defaults to SUPPORT if the proposer omits it.
+  polarity?: EvidencePolarity; // SUPPORTING | COUNTERVAILING — MODEL-ASSIGNED
+                           // interpretation the gate cannot verify (§1.1). Drives
+                           // QUESTIONED/LOOSENING/CONTRADICTED, guarded by recurrence +
+                           // confidence + curation, never by the gate. Defaults to SUPPORTING.
 }
 
 interface ProposedNode {
@@ -164,10 +178,18 @@ type RejectionReason =
 interface GateResult {
   acceptedNodes: AcceptedNode[];
   acceptedEdges: AcceptedEdge[];   // analogous shape
-  shadowBuffer: ProposedNode[];    // valid-but-subthreshold; retained, not discarded
+  shadowBuffer: ShadowCandidate[]; // valid-but-subthreshold candidates, with accumulated
+                                   // recurrence (timesSeen / distinctSources / evidenceCache).
+                                   // NOT ProposedNode[] — a raw proposal can't carry the
+                                   // cross-pass recurrence §6.1 requires. This is the updated
+                                   // buffer to persist for the next pass.
   rejected: RejectedItem[];
   gateVersion: string;             // for auditability
 }
+// ShadowCandidate mirrors the schema model (see schema.prisma): { candidateKey, type,
+// provenance, label, timesSeen, distinctSources, waitingReason, evidenceCache, ... }.
+// The gate takes the prior shadowBuffer in and returns the updated one out, so recurrence
+// accumulates deterministically across passes.
 ```
 
 ---
@@ -208,6 +230,8 @@ The proposer will rarely reproduce a quote byte-for-byte. Over-strict matching r
 **Span mapping (the highest-probability production bug in the gate — do not hand-wave this):** NFKC normalization *changes string length* (ligatures ﬁ→fi, full-width→half-width, some combining forms). So the naive "normalize → find index in normalized → slice the ORIGINAL at that index" is **wrong** the moment any earlier character normalized to a different length. It passes every ASCII test and then returns a corrupt span for the one entry containing a ligature or pasted full-width text — and that corrupt span is exactly what powers tap-for-evidence. The requirement is therefore specific: build an **explicit index map** from normalized positions back to original positions (or do a two-pass relocate that re-finds the quote in the original), so `spanStart/spanEnd` always index the ORIGINAL `content`. This gets a dedicated test with **non-ASCII fixtures** (ligatures, full-width, combining accents, emoji), not just ASCII.
 
 **Multiple-occurrence tie-break:** when the normalized quote appears more than once in the source (e.g. "i feel" five times), substring search alone picks an arbitrary match and tap-for-evidence lands on the wrong sentence. Rule for v1: the proposer supplies an approximate character offset with each quote; the gate selects the occurrence nearest that offset. If no offset is supplied, require the quote to be long/unique enough to occur once, else reject as ambiguous. Documented and tested.
+
+**PII redaction and spans (a trap for later — OUT of v1, noted now so it isn't wired in wrong).** A tempting privacy feature is to redact PII locally before sending text to a cloud proposer. Done naively, this *shifts character offsets* and breaks the gate's core guarantee: the proposer would cite spans in the redacted text that no longer map to the original, so the gate can't validate against the source. If PII handling is ever added, it must use **deterministic, reversible placeholder mapping** (stable tokens, offset map stored locally/under a user key) so that: the proposer cites placeholder text, the gate validates against a redacted *mirror*, and a local mapping resolves evidence back to exact original spans. Privacy preprocessing must never weaken the evidence mandate. For v1 this is entirely OUT of scope — the point of this note is that no one should add span-shifting redaction without solving span-resolvability first.
 
 ---
 
@@ -318,4 +342,4 @@ Maintain a small **ground-truth eval corpus**: synthetic journals with hand-labe
 
 Every distinctive claim Psyche-Net makes — "nothing is true until your life says so," "we show you your chart being wrong," "the instrument that shows what it doesn't know," the entire trust and safety story, the patent framing — reduces to this: *a deterministic gate that only lets validated, self-authored evidence confer reality on the map.* The beautiful physics, the constellation, the ceremonies are all downstream. If the gate is honest, the product is honest. Build it first. Test it hardest. Never route around it.
 
-*— End of citation gate spec v1.1. Provisional and revisable, like everything here — but the nine laws it enforces are not.*
+*— End of citation gate spec v1.2. Provisional and revisable, like everything here — but the nine laws it enforces are not.*

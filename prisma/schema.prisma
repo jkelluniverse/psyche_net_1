@@ -32,6 +32,13 @@ model User {
   ageVerified   Boolean   @default(false)
   displayName   String?
 
+  // Auth identity (NextAuth). Minimal set: passwordHash nullable so OAuth/passwordless
+  // paths don't require it; active gates sign-in without deleting the row (LAW 8 uses
+  // the separate erasure path, not this flag). Email is the login handle.
+  email         String?   @unique
+  passwordHash  String?
+  active        Boolean   @default(true)
+
   // Birth data for the Lens lane (LENS-01). Optional; nullable by design.
   // This is quasi-special-category PII — encrypt at rest; include in DPIA.
   birthDate     DateTime?
@@ -45,10 +52,10 @@ model User {
   edges         PsycheEdge[]
   experiments   Experiment[]
   charts        ChartImport[]
-  safetyFlags   SafetyFlag[]
   // Practitioner ↔ client links (a practitioner user has many clients).
   clientLinks   PractitionerClient[] @relation("practitioner")
   practitioners PractitionerClient[] @relation("client")
+  safetyFlags   SafetyFlag[]         // back-relation for SafetyFlag.user (LAW 7)
 
   @@index([role])
 }
