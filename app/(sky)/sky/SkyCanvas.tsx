@@ -26,6 +26,7 @@ import type {
   SkyNodeVM,
   SkyViewModel,
 } from "@/src/engine/sky-projection/types";
+import { EvidenceList } from "./EvidenceList";
 
 // Rendering-only palette (per node type) — warm, luminous star tones.
 // High-chroma on purpose: ghost desaturation (grammar, from the VM) pulls
@@ -492,8 +493,13 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
           <p className="mt-1 text-sm text-ink/80">
             {selected.evidenceCount === 0
               ? (selected.provenanceCopy ?? "No evidence recorded yet.")
-              : `${selected.evidenceCount} piece${selected.evidenceCount === 1 ? "" : "s"} of evidence from your own words.`}
+              : `${selected.evidenceCount} piece${selected.evidenceCount === 1 ? "" : "s"} of evidence from your own words:`}
           </p>
+          {selected.evidenceCount > 0 && !selected.veiled && (
+            <div className="max-h-48 overflow-y-auto">
+              <EvidenceList nodeId={selected.id} />
+            </div>
+          )}
         </div>
       )}
     </div>

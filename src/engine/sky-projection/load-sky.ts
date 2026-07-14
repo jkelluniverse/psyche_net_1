@@ -11,6 +11,7 @@
 // this query without touching the projection.
 
 import type { PrismaClient } from "@prisma/client";
+import { isConferring } from "../citation-gate/mass";
 import type {
   EffectiveEvidenceView,
   PersistedEdgeView,
@@ -65,13 +66,16 @@ export async function loadSkyGraph(
           spanEnd: e.spanEnd,
           occurredAt: e.occurredAt,
           polarity: e.polarity,
-          // The schema's own rule: conferring = SELF-authored AND the role the
-          // node type requires (ENACTMENT for BECOMING; SUPPORT otherwise).
-          conferring:
-            e.sourceEvent.authorship === "SELF" &&
-            (n.type === "BECOMING"
-              ? e.role === "ENACTMENT"
-              : e.role === "SUPPORT"),
+          // The GATE's rule, imported — never restated (this line once
+          // restated it wrong: D8 makes ENACTMENT confer on every type).
+          conferring: isConferring(
+            {
+              authorship: e.sourceEvent.authorship,
+              role: e.role,
+              sourceInvalidatedAt: e.sourceEvent.invalidatedAt,
+            },
+            n.type,
+          ),
           normalizationVersion: e.normalizationVersion,
           invalidatedAt: null, // Evidence-row invalidation is a migration-8 column
           sourceInvalidatedAt: e.sourceEvent.invalidatedAt,

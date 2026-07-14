@@ -9,6 +9,7 @@
 // motion-only. Server component on purpose.
 
 import type { SkyListModel } from "@/src/engine/sky-projection/list-model";
+import { EvidenceList } from "./EvidenceList";
 
 const CONFIDENCE_LABEL: Record<string, string> = {
   low: "low confidence — lightly held",
@@ -54,8 +55,11 @@ export function ListView({ list }: { list: SkyListModel }) {
                     <p>
                       {entry.evidenceCount === 0
                         ? (entry.provenanceCopy ?? "No evidence recorded yet.")
-                        : `${entry.evidenceCount} piece${entry.evidenceCount === 1 ? "" : "s"} of evidence from your own words.`}
+                        : `${entry.evidenceCount} piece${entry.evidenceCount === 1 ? "" : "s"} of evidence from your own words:`}
                     </p>
+                    {entry.evidenceCount > 0 && !entry.veiled && (
+                      <EvidenceList nodeId={entry.id} />
+                    )}
                   </div>
                 </details>
               </li>

@@ -109,7 +109,9 @@ suite("loadSkyGraph — persisted rows become projection views", () => {
     const ex = graph.nodes.find((n) => n.id === extracted.id)!;
     expect(ex.effectiveEvidence).toHaveLength(1);
     expect(ex.effectiveEvidence[0].authorship).toBe("SELF");
-    expect(ex.effectiveEvidence[0].conferring).toBe(true);
+    // The GATE's conferring rule (imported, not restated): a retracted
+    // source confers nothing — invalidation-aware at the rule itself.
+    expect(ex.effectiveEvidence[0].conferring).toBe(false);
     expect(ex.effectiveEvidence[0].sourceInvalidatedAt?.toISOString()).toBe(
       "2026-07-13T00:00:00.000Z", // live-joined — the projection will drop it
     );
