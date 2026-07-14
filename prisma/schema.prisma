@@ -176,6 +176,13 @@ model ChartImport {
 //                                gate pass would be trivially true, and a check
 //                                that cannot fail launders trust instead of
 //                                creating it.
+// The writer ALSO owns the RETRACTION SURFACE (renderer-lens v1.3, D-R6):
+// SourceEvent invalidation/supersession, Evidence erasure, and the LAW-8
+// path mutate ONLY through the writer's retraction API, which recomputes
+// affected hypotheses synchronously in the same transaction — a retraction
+// performed anywhere else is a bug. The retraction surface is a CHOKE-POINT,
+// NOT A RETENTION MECHANISM: LAW-8 erasure flowing through it truly erases;
+// tombstones carry audit metadata only (ids, causes, stamps), never content.
 // Anything else writing these tables is a bug, not a fourth author.
 // ─────────────────────────────────────────────────────────────────────────────
 
