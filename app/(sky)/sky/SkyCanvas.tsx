@@ -21,18 +21,21 @@ import type {
 } from "@/src/engine/sky-projection/types";
 
 // Rendering-only palette (per node type) — the celestial theme: warm,
-// luminous star tones against the deep field. Theme lives HERE (renderer),
-// never in the projection; not domain state.
+// luminous star tones against the deep field. Deliberately high-chroma:
+// ghost desaturation (grammar, from the VM) pulls 55% of the way to grey,
+// so a pastel base would leave every ghost the same fog — these keep their
+// hue through the veil of uncertainty. Theme lives HERE (renderer), never
+// in the projection; not domain state.
 const TYPE_COLORS: Record<string, [number, number, number]> = {
-  WOUND: [222, 168, 230],
-  SHADOW: [168, 156, 214],
-  BELIEF: [250, 224, 152],
-  PROTECTION: [164, 202, 244],
-  PATTERN: [252, 246, 232],
-  TRAIT: [190, 238, 206],
-  RESOURCE: [162, 233, 240],
-  BECOMING: [252, 190, 148],
-  LENS: [226, 224, 244],
+  WOUND: [225, 130, 245],
+  SHADOW: [150, 130, 235],
+  BELIEF: [255, 200, 80],
+  PROTECTION: [110, 180, 255],
+  PATTERN: [255, 240, 200],
+  TRAIT: [130, 240, 170],
+  RESOURCE: [90, 225, 240],
+  BECOMING: [255, 160, 90],
+  LENS: [205, 200, 255],
 };
 
 const SPACE = 4096;
@@ -77,13 +80,15 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
     const div = containerRef.current;
     if (!div || vm.nodes.length === 0) return;
 
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
+    // The force simulation is OFF while the sky has no edges: with nothing
+    // linking twelve equal stars, gravity has nothing to balance against and
+    // any force layout slowly re-coalesces them into a blob — motion that
+    // encodes no meaning (Jacob's phone verification caught exactly this).
+    // The seeded spiral IS the layout. When evidence draws real edges, the
+    // simulation earns its place back (link springs then carry structure).
     const graph = new Graph(div, {
       backgroundColor: [0, 0, 0, 0], // the field gradient is the card's, behind the canvas
-      enableSimulation: !reducedMotion,
+      enableSimulation: false,
       randomSeed: vm.seed,
       fitViewOnInit: true,
       // Render at the device's real resolution — the default (1) upscales the
@@ -94,18 +99,6 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
       // it must not inflate sprites into soft blobs.
       scalePointsOnZoom: false,
       hoveredPointRingColor: "#f8e3b0", // warm tap/hover ring on the dark field
-      // Constellation, not blob: low gravity, real repulsion, and collision
-      // so unlinked mass-0 stars can never stack into one grey mass.
-      simulationGravity: 0.08,
-      simulationRepulsion: 2.0,
-      simulationCollision: 1.0,
-      simulationCollisionPadding: 24,
-      simulationDecay: 3000,
-      // When the layout settles, frame the constellation — this also fixes
-      // the far-away initial view (fit-on-init framed the pre-layout scatter).
-      onSimulationEnd: () => {
-        graph.fitView(600, 120);
-      },
       onPointClick: (index: number) => {
         setSelected(vm.nodes[index] ?? null);
       },
@@ -116,16 +109,16 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
       await graph.ready; // v3 async init — explicit, per the documented API
       if (cancelled) return;
 
-      // Seeded phyllotaxis (golden-angle spiral) with a little jitter: evenly
-      // spread, never stacked — a good sky on its own (reduced motion renders
-      // exactly this), and a good starting layout for the simulation.
+      // Seeded phyllotaxis (golden-angle spiral) with jittered radius and
+      // angle: evenly spread, organic rather than geometric, never stacked,
+      // identical between sessions for the same user. This IS the layout.
       const rng = seededRandom(vm.seed);
       const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-      const spacing = 90;
+      const spacing = 150;
       const positions = new Float32Array(vm.nodes.length * 2);
       for (let i = 0; i < vm.nodes.length; i++) {
-        const r = spacing * Math.sqrt(i + 0.6);
-        const theta = i * GOLDEN + (rng() - 0.5) * 0.5;
+        const r = spacing * Math.sqrt(i + 0.6) * (0.85 + rng() * 0.3);
+        const theta = i * GOLDEN + (rng() - 0.5) * 0.7;
         positions[i * 2] = SPACE / 2 + r * Math.cos(theta);
         positions[i * 2 + 1] = SPACE / 2 + r * Math.sin(theta);
       }
@@ -137,7 +130,9 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
         colors[i * 4 + 1] = g / 255;
         colors[i * 4 + 2] = b / 255;
         colors[i * 4 + 3] = a;
-        sizes[i] = n.size * 2;
+        // Cosmos points render with a soft edge falloff that reads blurry
+        // when large — smaller crisp stars over big soft discs.
+        sizes[i] = n.size * 1.3;
       });
       const indexById = new Map(vm.nodes.map((n, i) => [n.id, i]));
       const links: number[] = [];
@@ -160,11 +155,10 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
         graph.setLinkWidths(new Float32Array(linkWidths));
         graph.setLinkColors(new Float32Array(linkColors));
       }
-      // Reduced motion: render the seeded spiral statically — no simulation,
-      // no transitions; the list view below stays the canonical surface.
-      graph.render(reducedMotion ? 0 : undefined);
-      // Frame the constellation now; onSimulationEnd re-frames after settle.
-      graph.fitView(reducedMotion ? 0 : 300, 120);
+      // Static render (no simulation to run), then frame the constellation.
+      // Reduced motion is honored by construction: nothing moves.
+      graph.render(0);
+      graph.fitView(0, 140);
     })();
 
     return () => {
