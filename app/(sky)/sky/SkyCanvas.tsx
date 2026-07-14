@@ -53,15 +53,14 @@ function seededRandom(seed: string): () => number {
 function nodeColor(n: SkyNodeVM): [number, number, number, number] {
   const base = TYPE_COLORS[n.type] ?? TYPE_COLORS.PATTERN;
   const grey = (base[0] + base[1] + base[2]) / 3;
-  const mix = (c: number) =>
-    Math.round((c * n.saturation + grey * (1 - n.saturation)) * n.brightness);
+  // Desaturation carries the ghost/earned distinction (grammar, from the VM).
+  const desat = (c: number) => c * n.saturation + grey * (1 - n.saturation);
+  // Brightness reads as EMBER→STAR: it eases the color toward its dim end,
+  // never multiplies it toward black (that muddied every star to grey).
+  const glow = 0.55 + 0.45 * n.brightness;
   const dim = n.dimmed ? 0.55 : 1;
-  return [
-    Math.min(255, mix(base[0]) * dim),
-    Math.min(255, mix(base[1]) * dim),
-    Math.min(255, mix(base[2]) * dim),
-    n.opacity,
-  ];
+  const ch = (c: number) => Math.round(Math.min(255, desat(c) * glow * dim));
+  return [ch(base[0]), ch(base[1]), ch(base[2]), n.opacity];
 }
 
 const CONFIDENCE_LABEL: Record<string, string> = {
@@ -87,10 +86,26 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
       enableSimulation: !reducedMotion,
       randomSeed: vm.seed,
       fitViewOnInit: true,
+      // Render at the device's real resolution — the default (1) upscales the
+      // canvas 3x on phones and blurs every star.
+      pixelRatio:
+        typeof window !== "undefined" ? Math.min(window.devicePixelRatio, 3) : 1,
+      // Stars keep their pixel size across zoom — zooming explores the field;
+      // it must not inflate sprites into soft blobs.
+      scalePointsOnZoom: false,
       hoveredPointRingColor: "#f8e3b0", // warm tap/hover ring on the dark field
-      simulationGravity: 0.25,
-      simulationRepulsion: 1.0,
-      simulationDecay: 5000,
+      // Constellation, not blob: low gravity, real repulsion, and collision
+      // so unlinked mass-0 stars can never stack into one grey mass.
+      simulationGravity: 0.08,
+      simulationRepulsion: 2.0,
+      simulationCollision: 1.0,
+      simulationCollisionPadding: 24,
+      simulationDecay: 3000,
+      // When the layout settles, frame the constellation — this also fixes
+      // the far-away initial view (fit-on-init framed the pre-layout scatter).
+      onSimulationEnd: () => {
+        graph.fitView(600, 120);
+      },
       onPointClick: (index: number) => {
         setSelected(vm.nodes[index] ?? null);
       },
@@ -101,11 +116,18 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
       await graph.ready; // v3 async init — explicit, per the documented API
       if (cancelled) return;
 
+      // Seeded phyllotaxis (golden-angle spiral) with a little jitter: evenly
+      // spread, never stacked — a good sky on its own (reduced motion renders
+      // exactly this), and a good starting layout for the simulation.
       const rng = seededRandom(vm.seed);
+      const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+      const spacing = 90;
       const positions = new Float32Array(vm.nodes.length * 2);
       for (let i = 0; i < vm.nodes.length; i++) {
-        positions[i * 2] = rng() * SPACE;
-        positions[i * 2 + 1] = rng() * SPACE;
+        const r = spacing * Math.sqrt(i + 0.6);
+        const theta = i * GOLDEN + (rng() - 0.5) * 0.5;
+        positions[i * 2] = SPACE / 2 + r * Math.cos(theta);
+        positions[i * 2 + 1] = SPACE / 2 + r * Math.sin(theta);
       }
       const colors = new Float32Array(vm.nodes.length * 4);
       const sizes = new Float32Array(vm.nodes.length);
@@ -138,9 +160,11 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
         graph.setLinkWidths(new Float32Array(linkWidths));
         graph.setLinkColors(new Float32Array(linkColors));
       }
-      // Reduced motion: render the seeded scatter statically — no simulation,
+      // Reduced motion: render the seeded spiral statically — no simulation,
       // no transitions; the list view below stays the canonical surface.
       graph.render(reducedMotion ? 0 : undefined);
+      // Frame the constellation now; onSimulationEnd re-frames after settle.
+      graph.fitView(reducedMotion ? 0 : 300, 120);
     })();
 
     return () => {
