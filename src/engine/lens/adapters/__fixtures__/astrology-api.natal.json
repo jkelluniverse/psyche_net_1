@@ -1,0 +1,265 @@
+{
+ "subject_data": {
+  "name": "Subject",
+  "year": 1990,
+  "month": 4,
+  "day": 12,
+  "hour": 14,
+  "minute": 32,
+  "city": "Portland",
+  "nation": "US",
+  "lng": -122.67621,
+  "lat": 45.52345,
+  "tz_str": "America/Los_Angeles",
+  "zodiac_type": "Tropic",
+  "houses_system_identifier": "P"
+ },
+ "chart_data": {
+  "planetary_positions": [
+   {
+    "name": "Sun",
+    "sign": "Ari",
+    "degree": 22.71,
+    "absolute_longitude": 22.71,
+    "house": 9,
+    "is_retrograde": false,
+    "speed": 0.9801,
+    "declination": null,
+    "declination_speed": null,
+    "ecliptic_latitude": null,
+    "declination_direction": null,
+    "is_out_of_bounds": null
+   },
+   {
+    "name": "Moon",
+    "sign": "Sco",
+    "degree": 22.95,
+    "absolute_longitude": 232.95,
+    "house": 4,
+    "is_retrograde": false,
+    "speed": 11.868,
+    "declination": null,
+    "declination_speed": null,
+    "ecliptic_latitude": null,
+    "declination_direction": null,
+    "is_out_of_bounds": null
+   },
+   {
+    "name": "Mercury",
+    "sign": "Tau",
+    "degree": 12.12,
+    "absolute_longitude": 42.12,
+    "house": 9,
+    "is_retrograde": false,
+    "speed": 1.0398,
+    "declination": null,
+    "declination_speed": null,
+    "ecliptic_latitude": null,
+    "declination_direction": null,
+    "is_out_of_bounds": null
+   },
+   {
+    "name": "Venus",
+    "sign": "Pis",
+    "degree": 6.79,
+    "absolute_longitude": 336.79,
+    "house": 7,
+    "is_retrograde": false,
+    "speed": 1.0564,
+    "declination": null,
+    "declination_speed": null,
+    "ecliptic_latitude": null,
+    "declination_direction": null,
+    "is_out_of_bounds": null
+   },
+   {
+    "name": "Mars",
+    "sign": "Aqu",
+    "degree": 24.0,
+    "absolute_longitude": 324.0,
+    "house": 7,
+    "is_retrograde": false,
+    "speed": 0.7476,
+    "declination": null,
+    "declination_speed": null,
+    "ecliptic_latitude": null,
+    "declination_direction": null,
+    "is_out_of_bounds": null
+   },
+   {
+    "name": "Jupiter",
+    "sign": "Can",
+    "degree": 4.19,
+    "absolute_longitude": 94.19,
+    "house": 11,
+    "is_retrograde": false,
+    "speed": 0.1339,
+    "declination": null,
+    "declination_speed": null,
+    "ecliptic_latitude": null,
+    "declination_direction": null,
+    "is_out_of_bounds": null
+   },
+   {
+    "name": "Saturn",
+    "sign": "Cap",
+    "degree": 24.94,
+    "absolute_longitude": 294.94,
+    "house": 6,
+    "is_retrograde": false,
+    "speed": 0.0357,
+    "declination": null,
+    "declination_speed": null,
+    "ecliptic_latitude": null,
+    "declination_direction": null,
+    "is_out_of_bounds": null
+   },
+   {
+    "name": "Ascendant",
+    "sign": "Leo",
+    "degree": 23.26,
+    "absolute_longitude": 143.26,
+    "house": 1,
+    "is_retrograde": false,
+    "speed": null,
+    "declination": null,
+    "declination_speed": null,
+    "ecliptic_latitude": null,
+    "declination_direction": null,
+    "is_out_of_bounds": null
+   }
+  ],
+  "house_cusps": [
+   {
+    "house": 1,
+    "sign": "Leo",
+    "degree": 23.26,
+    "absolute_longitude": 143.26
+   },
+   {
+    "house": 2,
+    "sign": "Vir",
+    "degree": 14.15,
+    "absolute_longitude": 164.15
+   },
+   {
+    "house": 3,
+    "sign": "Lib",
+    "degree": 10.58,
+    "absolute_longitude": 190.58
+   },
+   {
+    "house": 4,
+    "sign": "Sco",
+    "degree": 13.6,
+    "absolute_longitude": 223.6
+   },
+   {
+    "house": 5,
+    "sign": "Sag",
+    "degree": 20.56,
+    "absolute_longitude": 260.56
+   },
+   {
+    "house": 6,
+    "sign": "Cap",
+    "degree": 24.72,
+    "absolute_longitude": 294.72
+   },
+   {
+    "house": 7,
+    "sign": "Aqu",
+    "degree": 23.26,
+    "absolute_longitude": 323.26
+   },
+   {
+    "house": 8,
+    "sign": "Pis",
+    "degree": 14.15,
+    "absolute_longitude": 344.15
+   },
+   {
+    "house": 9,
+    "sign": "Ari",
+    "degree": 10.58,
+    "absolute_longitude": 10.58
+   },
+   {
+    "house": 10,
+    "sign": "Tau",
+    "degree": 13.6,
+    "absolute_longitude": 43.6
+   },
+   {
+    "house": 11,
+    "sign": "Gem",
+    "degree": 20.56,
+    "absolute_longitude": 80.56
+   },
+   {
+    "house": 12,
+    "sign": "Can",
+    "degree": 24.72,
+    "absolute_longitude": 114.72
+   }
+  ],
+  "aspects": [
+   {
+    "point1": "Sun",
+    "point2": "Mars",
+    "aspect_type": "sextile",
+    "orb": 1.290151466275006,
+    "aspect_direction": null,
+    "transiting_house": null,
+    "peak_activations": null,
+    "family": null,
+    "harmonic": null
+   },
+   {
+    "point1": "Sun",
+    "point2": "Jupiter",
+    "aspect_type": "quintile",
+    "orb": 0.5167807152433284,
+    "aspect_direction": null,
+    "transiting_house": null,
+    "peak_activations": null,
+    "family": null,
+    "harmonic": null
+   },
+   {
+    "point1": "Sun",
+    "point2": "Saturn",
+    "aspect_type": "square",
+    "orb": 2.2342433727151274,
+    "aspect_direction": null,
+    "transiting_house": null,
+    "peak_activations": null,
+    "family": null,
+    "harmonic": null
+   }
+  ],
+  "fixed_stars": null,
+  "meta": {
+   "chart_type": "natal",
+   "calculation_time": "2026-07-14T02:59:42.669981Z",
+   "house_system": "P",
+   "zodiac_type": "Tropic",
+   "active_points": [
+    "Sun",
+    "Moon",
+    "Mercury",
+    "Venus",
+    "Mars",
+    "Jupiter",
+    "Saturn",
+    "Ascendant"
+   ],
+   "precision": 2,
+   "ayanamsa": null
+  }
+ },
+ "warnings": null,
+ "antiscia_aspects": null,
+ "declination_aspects": null,
+ "out_of_bounds_planets": null
+}

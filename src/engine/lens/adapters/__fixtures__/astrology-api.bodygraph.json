@@ -1,0 +1,355 @@
+{
+ "success": true,
+ "data": {
+  "subject": {
+   "name": "Anonymous",
+   "birth_data": {
+    "year": 1990,
+    "month": 4,
+    "day": 12,
+    "hour": 14,
+    "minute": 32,
+    "second": 0,
+    "city": "Portland",
+    "country_code": "US",
+    "latitude": 45.52345,
+    "longitude": -122.67621,
+    "timezone": "America/Los_Angeles"
+   },
+   "email": null,
+   "notes": null
+  },
+  "bodygraph": {
+   "type": "projector",
+   "strategy": "To Wait for Invitation",
+   "authority": "splenic",
+   "profile": "3/5",
+   "definition": "split",
+   "incarnation_cross": "The Right Angle Cross of Maya",
+   "not_self_theme": "Bitterness",
+   "signature_theme": "Success",
+   "centers": {
+    "head": {
+     "center": "head",
+     "defined": true,
+     "gates": [
+      61,
+      64
+     ],
+     "conditioning_potential": null,
+     "interpretation": null
+    },
+    "ajna": {
+     "center": "ajna",
+     "defined": true,
+     "gates": [
+      24,
+      43
+     ],
+     "conditioning_potential": null,
+     "interpretation": null
+    },
+    "throat": {
+     "center": "throat",
+     "defined": false,
+     "gates": [
+      62
+     ],
+     "conditioning_potential": "high",
+     "interpretation": null
+    },
+    "g_center": {
+     "center": "g_center",
+     "defined": false,
+     "gates": [
+      1,
+      7,
+      13,
+      15
+     ],
+     "conditioning_potential": "high",
+     "interpretation": null
+    },
+    "heart": {
+     "center": "heart",
+     "defined": false,
+     "gates": [
+      26
+     ],
+     "conditioning_potential": "medium",
+     "interpretation": null
+    },
+    "sacral": {
+     "center": "sacral",
+     "defined": false,
+     "gates": [
+      42
+     ],
+     "conditioning_potential": "high",
+     "interpretation": null
+    },
+    "solar_plexus": {
+     "center": "solar_plexus",
+     "defined": false,
+     "gates": [
+      37,
+      49
+     ],
+     "conditioning_potential": "medium",
+     "interpretation": null
+    },
+    "spleen": {
+     "center": "spleen",
+     "defined": true,
+     "gates": [
+      32
+     ],
+     "conditioning_potential": null,
+     "interpretation": null
+    },
+    "root": {
+     "center": "root",
+     "defined": true,
+     "gates": [
+      38,
+      52,
+      54,
+      58,
+      60
+     ],
+     "conditioning_potential": null,
+     "interpretation": null
+    }
+   },
+   "channels": [
+    {
+     "channel": "61-24",
+     "name": "Awareness",
+     "gates": [
+      61,
+      24
+     ],
+     "centers": [
+      "head",
+      "ajna"
+     ],
+     "circuit": "individual",
+     "activation_source": "conscious",
+     "gate_details": {
+      "61": {
+       "source": "personality/design",
+       "planets": "Saturn, Sun"
+      },
+      "24": {
+       "source": "personality",
+       "planets": "Mercury"
+      }
+     },
+     "harmonic_gate": null,
+     "interpretation": null,
+     "themes": null
+    },
+    {
+     "channel": "32-54",
+     "name": "Transformation",
+     "gates": [
+      32,
+      54
+     ],
+     "centers": [
+      "spleen",
+      "root"
+     ],
+     "circuit": "tribal",
+     "activation_source": "mixed",
+     "gate_details": {
+      "32": {
+       "source": "personality",
+       "planets": "Earth"
+      },
+      "54": {
+       "source": "design",
+       "planets": "Saturn"
+      }
+     },
+     "harmonic_gate": null,
+     "interpretation": null,
+     "themes": null
+    }
+   ],
+   "personality_gates": [
+    {
+     "gate": 42,
+     "line": 3,
+     "planet": "Sun",
+     "i_ching": "Increase",
+     "center": "sacral",
+     "activation_type": "personality",
+     "exalted_planet": "Mars",
+     "detriment_planet": "Moon",
+     "is_exalted": false,
+     "is_in_detriment": false,
+     "planet_group": "core_identity",
+     "interpretation": null,
+     "keywords": null
+    },
+    {
+     "gate": 32,
+     "line": 3,
+     "planet": "Earth",
+     "i_ching": "Duration",
+     "center": "spleen",
+     "activation_type": "personality",
+     "exalted_planet": "Mercury",
+     "detriment_planet": "Jupiter",
+     "is_exalted": false,
+     "is_in_detriment": false,
+     "planet_group": "core_identity",
+     "interpretation": null,
+     "keywords": null
+    }
+   ],
+   "design_gates": [
+    {
+     "gate": 61,
+     "line": 5,
+     "planet": "Sun",
+     "i_ching": "Inner Truth",
+     "center": "head",
+     "activation_type": "design",
+     "exalted_planet": "Saturn",
+     "detriment_planet": "Mars",
+     "is_exalted": false,
+     "is_in_detriment": false,
+     "planet_group": "core_identity",
+     "interpretation": null,
+     "keywords": null
+    },
+    {
+     "gate": 62,
+     "line": 5,
+     "planet": "Earth",
+     "i_ching": "Preponderance of the Small",
+     "center": "throat",
+     "activation_type": "design",
+     "exalted_planet": "Moon",
+     "detriment_planet": "Neptune",
+     "is_exalted": false,
+     "is_in_detriment": false,
+     "planet_group": "core_identity",
+     "interpretation": null,
+     "keywords": null
+    }
+   ],
+   "hanging_gates": [
+    {
+     "gate": 1,
+     "center": "g_center",
+     "line": 5,
+     "source": "both",
+     "planets": [
+      "Pluto",
+      "Pluto"
+     ],
+     "potential_channels": [
+      {
+       "channel": "1-8",
+       "name": "The Creative Role Model",
+       "missing_gate": 8,
+       "missing_gate_center": "throat",
+       "circuit": "individual"
+      }
+     ]
+    },
+    {
+     "gate": 7,
+     "center": "g_center",
+     "line": 1,
+     "source": "both",
+     "planets": [
+      "True_South_Node",
+      "True_South_Node"
+     ],
+     "potential_channels": [
+      {
+       "channel": "7-31",
+       "name": "The Alpha",
+       "missing_gate": 31,
+       "missing_gate_center": "throat",
+       "circuit": "collective"
+      }
+     ]
+    }
+   ],
+   "circuit_analysis": {
+    "individual": {
+     "channels": 1,
+     "gates": 0,
+     "percentage": 50.0
+    },
+    "collective": {
+     "channels": 0,
+     "gates": 0,
+     "percentage": 0.0
+    },
+    "tribal": {
+     "channels": 1,
+     "gates": 0,
+     "percentage": 50.0
+    },
+    "integration": {
+     "channels": 0,
+     "gates": 0,
+     "percentage": 0.0
+    },
+    "dominant_circuit": "individual"
+   },
+   "definition_bridges": {
+    "definition_groups": [
+     {
+      "group_id": "A",
+      "centers": [
+       "ajna",
+       "head"
+      ],
+      "channels": [
+       "61-24"
+      ]
+     },
+     {
+      "group_id": "B",
+      "centers": [
+       "root",
+       "spleen"
+      ],
+      "channels": [
+       "32-54"
+      ]
+     }
+    ],
+    "bridges": [],
+    "bridging_gates_needed": [],
+    "split_width": "wide"
+   },
+   "design_datetime": "1990-01-15T03:15:22.652851Z",
+   "type_interpretation": null,
+   "strategy_interpretation": null,
+   "authority_interpretation": null,
+   "profile_interpretation": null
+  }
+ },
+ "metadata": {
+  "timestamp": "2026-07-14T03:00:03.740397Z",
+  "calculation_time_ms": 13,
+  "api_version": "3.2.0",
+  "endpoint": "human_design.bodygraph",
+  "request_id": "req_51d2424e05c1",
+  "cache_hit": false,
+  "cache_age_seconds": null,
+  "credits_used": 5,
+  "server_location": null,
+  "calculation_method": null
+ },
+ "warnings": null,
+ "pagination": null
+}

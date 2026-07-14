@@ -15,7 +15,7 @@
 
 import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { parseChart } from "./parse-chart";
+import { FEATURE_VOCABULARY_VERSION, PARSER_VERSION, parseChart } from "./parse-chart";
 import type { LensConfig } from "./select-ghosts";
 import { LENS_CONFIG_V1, selectGhosts } from "./select-ghosts";
 import type { LensTemplate } from "./lens-map.v1";
@@ -53,6 +53,24 @@ export type ImportChartResult =
     }
   | { ok: false; chartImportId: string; reason: string };
 
+// ── The provider seam (implemented by adapters/) ─────────────────────────────
+
+/** Structured place fields — collected explicitly by the entry form, never
+ * guessed out of the free-text birthPlace. */
+export interface FetchChartInput {
+  birth: BirthInputs;
+  city: string;
+  countryCode: string;
+}
+
+export interface ChartProvider {
+  /** Persisted on the import row (e.g. "astrology-api.io"). */
+  providerName: string;
+  /** Returns the CANONICAL raw chart shape the parser accepts; throws on
+   * any provider failure (never a partial mapping). */
+  fetchChart(input: FetchChartInput): Promise<unknown>;
+}
+
 /** Canonical fingerprint: normalized birth inputs, never provider JSON bytes. */
 export function chartFingerprint(
   birth: BirthInputs,
@@ -71,6 +89,65 @@ export function chartFingerprint(
 }
 
 const SERIALIZATION_RETRIES = 3;
+
+export interface ImportFromProviderInput {
+  userId: string;
+  system: "human_design" | "western_natal";
+  provider: ChartProvider;
+  birth: BirthInputs;
+  city: string;
+  countryCode: string;
+  now: Date;
+  config?: LensConfig;
+}
+
+/** Fetch from the provider, then run the import transaction. A provider
+ * failure follows the same ATOMIC-FAILURE rule as a parse failure: the
+ * retryable status=error import row is committed with ZERO nodes — never a
+ * partial ghost sky (renderer-lens spec §1). */
+export async function importChartFromProvider(
+  prisma: PrismaClient,
+  input: ImportFromProviderInput,
+): Promise<ImportChartResult> {
+  const { userId, system, provider, birth, city, countryCode, now, config } = input;
+  let rawChart: unknown;
+  try {
+    rawChart = await provider.fetchChart({ birth, city, countryCode });
+  } catch (err) {
+    const reason =
+      err instanceof Error ? err.message : `provider failure: ${String(err)}`;
+    const fingerprint = chartFingerprint(birth, provider.providerName, system);
+    const row = await prisma.$transaction(async (tx) => {
+      const existing = await tx.chartImport.findFirst({
+        where: { userId, system, chartFingerprint: fingerprint },
+      });
+      const data = {
+        raw: { providerError: reason } as Prisma.InputJsonValue,
+        importedAt: now,
+        provider: provider.providerName,
+        chartFingerprint: fingerprint,
+        // The stamps name the parser that WOULD have read the payload — replay
+        // still knows which pipeline version recorded this failure.
+        parserVersion: PARSER_VERSION,
+        featureVocabularyVersion: FEATURE_VOCABULARY_VERSION,
+        status: "error",
+      };
+      return existing
+        ? tx.chartImport.update({ where: { id: existing.id }, data })
+        : tx.chartImport.create({ data: { userId, system, ...data } });
+    });
+    return { ok: false, chartImportId: row.id, reason };
+  }
+  return importChart(prisma, {
+    userId,
+    system,
+    provider: provider.providerName,
+    birth,
+    rawChart,
+    now,
+    config,
+  });
+}
 
 export async function importChart(
   prisma: PrismaClient,
