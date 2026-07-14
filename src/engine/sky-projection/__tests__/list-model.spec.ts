@@ -13,7 +13,7 @@
 //   provenance/hypothesis copy the panel needs — nothing render-only.
 
 import { describe, expect, it } from "vitest";
-import { RENDERER_CONFIG_V1 } from "../renderer-config.v1";
+import { RENDERER_CONFIG_V2 } from "../renderer-config.v2";
 import { skyProjection } from "../sky-projection";
 import { listModel } from "../list-model";
 import type { PersistedEdgeView, PersistedNodeView } from "../types";
@@ -91,7 +91,7 @@ const vmOf = () =>
     NOW,
     "seed",
     { role: "INDIVIDUAL" },
-    RENDERER_CONFIG_V1,
+    RENDERER_CONFIG_V2,
   );
 
 describe("listModel — content parity with the (veiled) view model", () => {
@@ -121,7 +121,7 @@ describe("listModel — content parity with the (veiled) view model", () => {
     }
     // the raw wound label cannot appear anywhere in the list model
     expect(JSON.stringify(list)).not.toContain("raw wound label");
-    expect(JSON.stringify(list)).toContain(RENDERER_CONFIG_V1.woundGate.veilCopy);
+    expect(JSON.stringify(list)).toContain(RENDERER_CONFIG_V2.woundGate.veilCopy);
   });
 
   it("every edge appears exactly once with resolved endpoint labels", () => {
@@ -143,11 +143,11 @@ describe("listModel — content parity with the (veiled) view model", () => {
     const ghost = list.nodeGroups
       .flatMap((g) => g.entries)
       .find((e) => e.id === "n-ghost")!;
-    expect(ghost.hypothesisBadge).toBe(RENDERER_CONFIG_V1.ghost.badge);
-    expect(ghost.provenanceCopy).toBe(RENDERER_CONFIG_V1.provenanceCopy.LENS);
+    expect(ghost.hypothesisBadge).toBe(RENDERER_CONFIG_V2.ghost.badge);
+    expect(ghost.provenanceCopy).toBe(RENDERER_CONFIG_V2.provenanceCopy.LENS);
     expect(ghost.evidenceCount).toBe(0);
     expect(ghost.confidenceBand).toBe("low");
-    expect(ghost.label.endsWith(RENDERER_CONFIG_V1.draftWatermark.suffix)).toBe(true);
+    expect(ghost.label.endsWith(RENDERER_CONFIG_V2.draftWatermark.suffix)).toBe(true);
     const p1 = list.nodeGroups
       .flatMap((g) => g.entries)
       .find((e) => e.id === "n-p1")!;
@@ -164,6 +164,6 @@ describe("listModel — content parity with the (veiled) view model", () => {
 
   it("carries the fringe (LAW 5 — the list is never falsely complete either)", () => {
     const list = listModel(vmOf());
-    expect(list.fringe.copy).toBe(RENDERER_CONFIG_V1.fringe.copy);
+    expect(list.fringe.copy).toBe(RENDERER_CONFIG_V2.fringe.copy);
   });
 });

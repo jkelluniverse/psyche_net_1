@@ -26,6 +26,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { ShadowCandidate } from "@prisma/client";
 import { RENDERER_CONFIG_V1 } from "../renderer-config.v1";
+import { RENDERER_CONFIG_V2 } from "../renderer-config.v2";
+
+// The deployed default. Grammar assertions run against it; the canonical
+// snapshot test covers EVERY checked-in config version (spec §2).
+const CONFIG = RENDERER_CONFIG_V2;
 import { brightness } from "../brightness";
 import { PROJECTION_VERSION, skyProjection } from "../sky-projection";
 import type {
@@ -83,7 +88,7 @@ const project = (
   nodes: PersistedNodeView[],
   edges: PersistedEdgeView[] = [],
   viewer: ViewerContext = INDIVIDUAL,
-) => skyProjection(nodes, edges, NOW, SEED, viewer, RENDERER_CONFIG_V1);
+) => skyProjection(nodes, edges, NOW, SEED, viewer, CONFIG);
 
 describe("skyProjection — purity (test 4)", () => {
   const nodes = [
@@ -119,7 +124,7 @@ describe("skyProjection — purity (test 4)", () => {
   it("stamps projectionVersion, rendererConfigVersion, seed, and the explicit now", () => {
     const vm = project(nodes, edges);
     expect(vm.projectionVersion).toBe(PROJECTION_VERSION);
-    expect(vm.rendererConfigVersion).toBe(RENDERER_CONFIG_V1.rendererConfigVersion);
+    expect(vm.rendererConfigVersion).toBe(CONFIG.rendererConfigVersion);
     expect(vm.seed).toBe(SEED);
     expect(vm.now).toBe(NOW.toISOString());
   });
@@ -145,10 +150,10 @@ describe("ghost styling + draft watermark (test 3 + checkpoint rule)", () => {
     const g = vm.nodes[0];
     expect(g.ghost).toEqual({
       dashedRing: true,
-      badge: RENDERER_CONFIG_V1.ghost.badge,
+      badge: CONFIG.ghost.badge,
     });
-    expect(g.saturation).toBe(RENDERER_CONFIG_V1.ghost.saturation);
-    expect(g.size).toBe(RENDERER_CONFIG_V1.size.minRadius); // mass 0 floor
+    expect(g.saturation).toBe(CONFIG.ghost.saturation);
+    expect(g.size).toBe(CONFIG.size.minRadius); // mass 0 floor
   });
 
   it("a draft lens map WATERMARKS the label — no unmarked ghost copy before the blessing", () => {
@@ -156,7 +161,7 @@ describe("ghost styling + draft watermark (test 3 + checkpoint rule)", () => {
     const g = vm.nodes[0];
     expect(g.draftWatermark).toBe(true);
     expect(g.label).toBe(
-      `Deep feeling needs safety${RENDERER_CONFIG_V1.draftWatermark.suffix}`,
+      `Deep feeling needs safety${CONFIG.draftWatermark.suffix}`,
     );
   });
 
@@ -170,7 +175,7 @@ describe("ghost styling + draft watermark (test 3 + checkpoint rule)", () => {
     const vm = project([ghost]);
     expect(vm.nodes[0].evidenceCount).toBe(0);
     expect(vm.nodes[0].provenanceCopy).toBe(
-      RENDERER_CONFIG_V1.provenanceCopy.LENS,
+      CONFIG.provenanceCopy.LENS,
     );
     // an extracted node with evidence carries none
     const vm2 = project([node({ id: "x-1" })]);
@@ -190,7 +195,7 @@ describe("WOUND veil is a property of the projection (test 10)", () => {
     const vm = project([wound]);
     const w = vm.nodes[0];
     expect(w.veiled).toBe(true);
-    expect(w.label).toBe(RENDERER_CONFIG_V1.woundGate.veilCopy);
+    expect(w.label).toBe(CONFIG.woundGate.veilCopy);
     expect(JSON.stringify(vm)).not.toContain("raw wound label");
   });
 
@@ -203,7 +208,7 @@ describe("WOUND veil is a property of the projection (test 10)", () => {
   it("PRACTITIONER without woundConsent stays veiled (fail-closed)", () => {
     const vm = project([wound], [], { role: "PRACTITIONER", woundConsent: false });
     expect(vm.nodes[0].veiled).toBe(true);
-    expect(vm.nodes[0].label).toBe(RENDERER_CONFIG_V1.woundGate.veilCopy);
+    expect(vm.nodes[0].label).toBe(CONFIG.woundGate.veilCopy);
   });
 
   it("non-WOUND nodes are never veiled", () => {
@@ -214,7 +219,7 @@ describe("WOUND veil is a property of the projection (test 10)", () => {
 });
 
 describe("brightness — named recency function (test 12 carriers)", () => {
-  const cfg = RENDERER_CONFIG_V1.brightness;
+  const cfg = CONFIG.brightness;
 
   it("zero evidence → floor; fresh evidence → 1; one half-life → half-ish", () => {
     expect(brightness([], NOW, cfg)).toBe(cfg.floor);
@@ -282,7 +287,7 @@ describe("grammar carriers: bands, edges, states, fringe (test 12)", () => {
       ],
     );
     const [hi, lo] = [vm.nodes.find((n) => n.id === "hi")!, vm.nodes.find((n) => n.id === "lo")!];
-    expect(lo.opacity).toBeGreaterThanOrEqual(RENDERER_CONFIG_V1.confidence.opacityFloor);
+    expect(lo.opacity).toBeGreaterThanOrEqual(CONFIG.confidence.opacityFloor);
     expect(hi.opacity).toBeGreaterThan(lo.opacity);
     expect(lo.confidenceBand).toBe("low");
     expect(hi.confidenceBand).toBe("high");
@@ -302,13 +307,18 @@ describe("grammar carriers: bands, edges, states, fringe (test 12)", () => {
   it("the unexplored fringe is always present (LAW 5: never falsely complete)", () => {
     const vm = project([]);
     expect(vm.fringe).toEqual({
-      copy: RENDERER_CONFIG_V1.fringe.copy,
-      treatment: RENDERER_CONFIG_V1.fringe.treatment,
+      copy: CONFIG.fringe.copy,
+      treatment: CONFIG.fringe.treatment,
     });
   });
 
-  it("canonical-view snapshot for rendererConfig v1 (checked in per version)", () => {
-    const vm = project(
+  // One canonical-view snapshot per checked-in config version (spec §2) —
+  // tuning a constant means a new version AND a new snapshot, same edit.
+  it.each([
+    ["v1", RENDERER_CONFIG_V1],
+    ["v2", RENDERER_CONFIG_V2],
+  ])("canonical-view snapshot for rendererConfig %s (checked in per version)", (_v, cfg) => {
+    const vm = skyProjection(
       [
         node({ id: "n-active", label: "active extracted" }),
         node({
@@ -335,8 +345,35 @@ describe("grammar carriers: bands, edges, states, fringe (test 12)", () => {
         }),
       ],
       [edge({ id: "e-1", sourceId: "n-active", targetId: "n-ghost" })],
+      NOW,
+      SEED,
+      INDIVIDUAL,
+      cfg,
     );
     expect(vm).toMatchSnapshot();
+  });
+
+  it("v2 Tier-0 legibility: an all-ghost sky is clearly visible, still visibly ghost", () => {
+    const ghost = node({
+      id: "g-1",
+      provenance: "LENS",
+      mass: 0,
+      state: "HYPOTHESIS",
+      confidence: 0.2,
+      lensMapVersion: "v1",
+      effectiveEvidence: [],
+    });
+    const g = project([ghost]).nodes[0];
+    // legible: none of the floors renders near-invisible
+    expect(g.size).toBeGreaterThanOrEqual(9);
+    expect(g.opacity).toBeGreaterThanOrEqual(0.6);
+    expect(g.brightness).toBeGreaterThanOrEqual(0.4);
+    // still a ghost: desaturated + dashed ring + badge, distinct from earned
+    expect(g.saturation).toBeLessThan(1);
+    expect(g.ghost).not.toBeNull();
+    const earned = project([node({ id: "a-1" })]).nodes[0];
+    expect(earned.saturation).toBe(1);
+    expect(earned.ghost).toBeNull();
   });
 });
 
@@ -354,7 +391,7 @@ describe("domain/rendering firewall (tests 5 + 12)", () => {
   it("ShadowCandidate[] is unrepresentable as projection input (type-level)", () => {
     const shadows: ShadowCandidate[] = [];
     // @ts-expect-error — shadow-lane material is held, not shown; the type system enforces it
-    const call = () => skyProjection(shadows, [], NOW, SEED, INDIVIDUAL, RENDERER_CONFIG_V1);
+    const call = () => skyProjection(shadows, [], NOW, SEED, INDIVIDUAL, CONFIG);
     void call;
     expect(true).toBe(true);
   });

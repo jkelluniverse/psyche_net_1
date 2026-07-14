@@ -12,7 +12,7 @@ import { loadSkyGraph } from "@/src/engine/sky-projection/load-sky";
 import { skyProjection } from "@/src/engine/sky-projection/sky-projection";
 import { listModel } from "@/src/engine/sky-projection/list-model";
 import { stableSeed } from "@/src/engine/sky-projection/seed";
-import { RENDERER_CONFIG_V1 } from "@/src/engine/sky-projection/renderer-config.v1";
+import { RENDERER_CONFIG_V2 } from "@/src/engine/sky-projection/renderer-config.v2";
 import { Eyebrow, SignatureRule } from "@/components/brand";
 import { SkyCanvas } from "./SkyCanvas";
 import { ListView } from "./ListView";
@@ -30,7 +30,7 @@ export default async function SkyPage() {
     new Date(),
     stableSeed(user.id),
     { role: "INDIVIDUAL" },
-    RENDERER_CONFIG_V1,
+    RENDERER_CONFIG_V2,
   );
   const list = listModel(vm);
 

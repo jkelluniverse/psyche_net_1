@@ -20,17 +20,19 @@ import type {
   SkyViewModel,
 } from "@/src/engine/sky-projection/types";
 
-// Rendering-only palette (hex per node type). Not domain state.
+// Rendering-only palette (per node type) — the celestial theme: warm,
+// luminous star tones against the deep field. Theme lives HERE (renderer),
+// never in the projection; not domain state.
 const TYPE_COLORS: Record<string, [number, number, number]> = {
-  WOUND: [180, 120, 200],
-  SHADOW: [120, 110, 160],
-  BELIEF: [235, 200, 120],
-  PROTECTION: [140, 180, 220],
-  PATTERN: [240, 240, 255],
-  TRAIT: [170, 220, 190],
-  RESOURCE: [130, 220, 230],
-  BECOMING: [250, 170, 130],
-  LENS: [200, 200, 220],
+  WOUND: [222, 168, 230],
+  SHADOW: [168, 156, 214],
+  BELIEF: [250, 224, 152],
+  PROTECTION: [164, 202, 244],
+  PATTERN: [252, 246, 232],
+  TRAIT: [190, 238, 206],
+  RESOURCE: [162, 233, 240],
+  BECOMING: [252, 190, 148],
+  LENS: [226, 224, 244],
 };
 
 const SPACE = 4096;
@@ -81,10 +83,11 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
     ).matches;
 
     const graph = new Graph(div, {
-      backgroundColor: [0, 0, 0, 0],
+      backgroundColor: [0, 0, 0, 0], // the field gradient is the card's, behind the canvas
       enableSimulation: !reducedMotion,
       randomSeed: vm.seed,
       fitViewOnInit: true,
+      hoveredPointRingColor: "#f8e3b0", // warm tap/hover ring on the dark field
       simulationGravity: 0.25,
       simulationRepulsion: 1.0,
       simulationDecay: 5000,
@@ -151,11 +154,30 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
   return (
     <div className="relative">
       <div
-        ref={containerRef}
-        className="h-[60vh] w-full rounded-lg bg-[#0b0e1a]"
-        aria-label="Night-sky graph of your inner map. The full content is available in the list below."
-        role="img"
-      />
+        className="relative h-[65vh] w-full overflow-hidden rounded-xl"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 38%, #16203c 0%, #0d1226 55%, #05070f 100%)",
+        }}
+      >
+        <div
+          ref={containerRef}
+          className="absolute inset-0"
+          aria-label="Night-sky graph of your inner map. The full content is available in the list below."
+          role="img"
+        />
+        {/* The unexplored fringe (LAW 5): a soft edge treatment + the honest
+            copy, styled for the dark field. Config owns the words. */}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-xl"
+          style={{
+            boxShadow: "inset 0 0 90px 30px rgba(3, 5, 12, 0.85)",
+          }}
+        />
+        <p className="pointer-events-none absolute inset-x-0 bottom-3 px-6 text-center text-xs italic text-[#8b93b8]">
+          {vm.fringe.copy}
+        </p>
+      </div>
       {selected && (
         <div
           className="absolute bottom-3 left-3 right-3 max-w-md rounded-md border border-ink/15 bg-canvas/95 p-4 shadow-lg"
