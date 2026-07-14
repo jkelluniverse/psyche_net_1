@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
+    "@cosmos.gl/graph": "^3.3.0",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "next": "^14.2.35",
