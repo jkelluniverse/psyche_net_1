@@ -1,0 +1,2503 @@
+{
+  "generatedAt": "2026-07-14T00:23:04.227Z",
+  "mode": "live",
+  "model": "claude-sonnet-5",
+  "corpusVersion": "v1",
+  "scorerVersion": "v1",
+  "promptVersion": "v3",
+  "contractVersion": "v2.2",
+  "gateVersion": "v1.6",
+  "normalizationVersion": "v1",
+  "massAlgorithmVersion": "v1.1",
+  "confidenceAlgorithmVersion": "v1.1",
+  "stateAlgorithmVersion": "v1",
+  "ontologyVersion": "v1",
+  "coverage": {
+    "entriesPerNodeType": {
+      "WOUND": 7,
+      "SHADOW": 5,
+      "BELIEF": 11,
+      "PROTECTION": 5,
+      "PATTERN": 9,
+      "TRAIT": 3,
+      "RESOURCE": 5
+    },
+    "entriesPerEdgeType": {
+      "DRIVES": 2,
+      "PROTECTS_FROM": 2,
+      "EXPRESSES_AS": 2,
+      "ROOTED_IN": 2,
+      "REINFORCES": 2,
+      "SOFTENED_BY": 2
+    },
+    "casesPerCategory": {
+      "standard": 13,
+      "adversarial-injection": 10,
+      "third-party": 5,
+      "flat": 5
+    },
+    "shortfalls": []
+  },
+  "aggregate": {
+    "cases": 33,
+    "nodeRecall": {
+      "numerator": 11,
+      "denominator": 19,
+      "rate": 0.5789473684210527
+    },
+    "nodeRecallIncludingShadow": {
+      "numerator": 16,
+      "denominator": 19,
+      "rate": 0.8421052631578947
+    },
+    "nodePrecision": {
+      "numerator": 11,
+      "denominator": 19,
+      "rate": 0.5789473684210527
+    },
+    "edgeRecall": {
+      "numerator": 2,
+      "denominator": 6,
+      "rate": 0.3333333333333333
+    },
+    "edgePrecision": {
+      "numerator": 2,
+      "denominator": 7,
+      "rate": 0.2857142857142857
+    },
+    "citationPrecision": {
+      "numerator": 110,
+      "denominator": 110,
+      "rate": 1
+    },
+    "semanticEntailment": {
+      "numerator": 25,
+      "denominator": 67,
+      "rate": 0.373134328358209
+    },
+    "perNodeType": {
+      "BELIEF": {
+        "citation": {
+          "numerator": 20,
+          "denominator": 20,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 4,
+          "denominator": 6,
+          "rate": 0.6666666666666666
+        },
+        "expected": 5,
+        "matched": 2
+      },
+      "SHADOW": {
+        "citation": {
+          "numerator": 7,
+          "denominator": 7,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 4,
+          "denominator": 6,
+          "rate": 0.6666666666666666
+        },
+        "expected": 2,
+        "matched": 2
+      },
+      "PROTECTION": {
+        "citation": {
+          "numerator": 11,
+          "denominator": 11,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 0,
+          "denominator": 7,
+          "rate": 0
+        },
+        "expected": 2,
+        "matched": 0
+      },
+      "PATTERN": {
+        "citation": {
+          "numerator": 28,
+          "denominator": 28,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 7,
+          "denominator": 24,
+          "rate": 0.2916666666666667
+        },
+        "expected": 4,
+        "matched": 4
+      },
+      "RESOURCE": {
+        "citation": {
+          "numerator": 4,
+          "denominator": 4,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 0,
+          "denominator": 2,
+          "rate": 0
+        },
+        "expected": 2,
+        "matched": 0
+      },
+      "TRAIT": {
+        "citation": {
+          "numerator": 3,
+          "denominator": 3,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "expected": 1,
+        "matched": 0
+      },
+      "WOUND": {
+        "citation": {
+          "numerator": 10,
+          "denominator": 10,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 7,
+          "denominator": 10,
+          "rate": 0.7
+        },
+        "expected": 3,
+        "matched": 3
+      }
+    },
+    "perEdgeType": {
+      "PROTECTS_FROM": {
+        "citation": {
+          "numerator": 5,
+          "denominator": 5,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 0,
+          "denominator": 3,
+          "rate": 0
+        },
+        "expected": 1,
+        "matched": 0
+      },
+      "EXPRESSES_AS": {
+        "citation": {
+          "numerator": 6,
+          "denominator": 6,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 1,
+          "denominator": 3,
+          "rate": 0.3333333333333333
+        },
+        "expected": 1,
+        "matched": 1
+      },
+      "REINFORCES": {
+        "citation": {
+          "numerator": 7,
+          "denominator": 7,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 2,
+          "denominator": 3,
+          "rate": 0.6666666666666666
+        },
+        "expected": 1,
+        "matched": 1
+      },
+      "DRIVES": {
+        "citation": {
+          "numerator": 3,
+          "denominator": 3,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "expected": 1,
+        "matched": 0
+      },
+      "ROOTED_IN": {
+        "citation": {
+          "numerator": 3,
+          "denominator": 3,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "expected": 1,
+        "matched": 0
+      },
+      "SOFTENED_BY": {
+        "citation": {
+          "numerator": 3,
+          "denominator": 3,
+          "rate": 1
+        },
+        "entailment": {
+          "numerator": 0,
+          "denominator": 3,
+          "rate": 0
+        },
+        "expected": 1,
+        "matched": 0
+      }
+    },
+    "forbiddenViolations": [],
+    "flatFalseMaterializations": 0
+  },
+  "perCase": [
+    {
+      "caseId": "std-shadow-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "citationPrecision": {
+        "numerator": 10,
+        "denominator": 10,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 2,
+        "denominator": 6,
+        "rate": 0.3333333333333333
+      },
+      "perNodeType": {
+        "BELIEF": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "SHADOW": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 2,
+            "denominator": 3,
+            "rate": 0.6666666666666666
+          },
+          "expected": 1,
+          "matched": 1
+        },
+        "PROTECTION": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 2,
+            "rate": 0
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "PATTERN": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "PROTECTS_FROM": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 1,
+            "rate": 0
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "EXPRESSES_AS": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "std-belief-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 7,
+        "denominator": 7,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 2,
+        "rate": 0
+      },
+      "perNodeType": {
+        "BELIEF": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 1,
+          "matched": 0
+        },
+        "PATTERN": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 2,
+            "rate": 0
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "EXPRESSES_AS": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "std-protection-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 7,
+        "denominator": 7,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {
+        "PROTECTION": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 1,
+          "matched": 0
+        },
+        "PATTERN": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "SHADOW": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "PROTECTS_FROM": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "REINFORCES": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "std-pattern-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 7,
+        "denominator": 7,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 3,
+        "denominator": 6,
+        "rate": 0.5
+      },
+      "perNodeType": {
+        "PATTERN": {
+          "citation": {
+            "numerator": 6,
+            "denominator": 6,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 3,
+            "denominator": 6,
+            "rate": 0.5
+          },
+          "expected": 1,
+          "matched": 1
+        },
+        "RESOURCE": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "std-trait-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 6,
+        "denominator": 6,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 2,
+        "rate": 0
+      },
+      "perNodeType": {
+        "TRAIT": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 1,
+          "matched": 0
+        },
+        "PATTERN": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 2,
+            "rate": 0
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "REINFORCES": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "std-resource-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 2,
+        "rate": 0
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "citationPrecision": {
+        "numerator": 10,
+        "denominator": 10,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 6,
+        "rate": 0
+      },
+      "perNodeType": {
+        "BELIEF": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "PATTERN": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 3,
+            "rate": 0
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "RESOURCE": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 2,
+            "rate": 0
+          },
+          "expected": 1,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "REINFORCES": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "EXPRESSES_AS": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 1,
+            "rate": 0
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "std-wound-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 6,
+        "denominator": 6,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 3,
+        "denominator": 4,
+        "rate": 0.75
+      },
+      "perNodeType": {
+        "WOUND": {
+          "citation": {
+            "numerator": 4,
+            "denominator": 4,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 3,
+            "denominator": 4,
+            "rate": 0.75
+          },
+          "expected": 1,
+          "matched": 1
+        },
+        "BELIEF": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "DRIVES": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "edge-drives-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 2,
+        "denominator": 2,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 9,
+        "denominator": 9,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 1,
+        "denominator": 3,
+        "rate": 0.3333333333333333
+      },
+      "perNodeType": {
+        "BELIEF": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 1,
+          "matched": 0
+        },
+        "PATTERN": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 1,
+            "denominator": 3,
+            "rate": 0.3333333333333333
+          },
+          "expected": 1,
+          "matched": 1
+        },
+        "PROTECTION": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "DRIVES": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 1,
+          "matched": 0
+        },
+        "PROTECTS_FROM": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "edge-protects-from-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "nodePrecision": {
+        "numerator": 1,
+        "denominator": 3,
+        "rate": 0.3333333333333333
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 2,
+        "rate": 0
+      },
+      "citationPrecision": {
+        "numerator": 10,
+        "denominator": 10,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 2,
+        "denominator": 10,
+        "rate": 0.2
+      },
+      "perNodeType": {
+        "PATTERN": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 2,
+            "rate": 0
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "PROTECTION": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 2,
+            "rate": 0
+          },
+          "expected": 1,
+          "matched": 0
+        },
+        "WOUND": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 2,
+            "denominator": 3,
+            "rate": 0.6666666666666666
+          },
+          "expected": 1,
+          "matched": 1
+        }
+      },
+      "perEdgeType": {
+        "PROTECTS_FROM": {
+          "citation": {
+            "numerator": 2,
+            "denominator": 2,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 2,
+            "rate": 0
+          },
+          "expected": 1,
+          "matched": 0
+        },
+        "EXPRESSES_AS": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 1,
+            "rate": 0
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "edge-expresses-as-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 2,
+        "denominator": 2,
+        "rate": 1
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 2,
+        "denominator": 2,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 2,
+        "denominator": 2,
+        "rate": 1
+      },
+      "edgeRecall": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "edgePrecision": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "citationPrecision": {
+        "numerator": 8,
+        "denominator": 8,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 5,
+        "denominator": 7,
+        "rate": 0.7142857142857143
+      },
+      "perNodeType": {
+        "SHADOW": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 2,
+            "denominator": 3,
+            "rate": 0.6666666666666666
+          },
+          "expected": 1,
+          "matched": 1
+        },
+        "PATTERN": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 2,
+            "denominator": 3,
+            "rate": 0.6666666666666666
+          },
+          "expected": 1,
+          "matched": 1
+        },
+        "RESOURCE": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "EXPRESSES_AS": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "expected": 1,
+          "matched": 1
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "edge-rooted-in-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 2,
+        "denominator": 2,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 11,
+        "denominator": 11,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 2,
+        "denominator": 3,
+        "rate": 0.6666666666666666
+      },
+      "perNodeType": {
+        "BELIEF": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 1,
+          "matched": 0
+        },
+        "WOUND": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 2,
+            "denominator": 3,
+            "rate": 0.6666666666666666
+          },
+          "expected": 1,
+          "matched": 1
+        },
+        "PATTERN": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "ROOTED_IN": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 1,
+          "matched": 0
+        },
+        "REINFORCES": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "edge-reinforces-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 2,
+        "denominator": 2,
+        "rate": 1
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 2,
+        "denominator": 2,
+        "rate": 1
+      },
+      "nodePrecision": {
+        "numerator": 2,
+        "denominator": 2,
+        "rate": 1
+      },
+      "edgeRecall": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "edgePrecision": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "citationPrecision": {
+        "numerator": 9,
+        "denominator": 9,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 5,
+        "denominator": 9,
+        "rate": 0.5555555555555556
+      },
+      "perNodeType": {
+        "PATTERN": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 1,
+            "denominator": 3,
+            "rate": 0.3333333333333333
+          },
+          "expected": 1,
+          "matched": 1
+        },
+        "BELIEF": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 2,
+            "denominator": 3,
+            "rate": 0.6666666666666666
+          },
+          "expected": 1,
+          "matched": 1
+        }
+      },
+      "perEdgeType": {
+        "REINFORCES": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 2,
+            "denominator": 3,
+            "rate": 0.6666666666666666
+          },
+          "expected": 1,
+          "matched": 1
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "edge-softened-by-01",
+      "category": "standard",
+      "nodeRecall": {
+        "numerator": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "nodePrecision": {
+        "numerator": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0
+      },
+      "citationPrecision": {
+        "numerator": 9,
+        "denominator": 9,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 2,
+        "denominator": 9,
+        "rate": 0.2222222222222222
+      },
+      "perNodeType": {
+        "BELIEF": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 2,
+            "denominator": 3,
+            "rate": 0.6666666666666666
+          },
+          "expected": 1,
+          "matched": 1
+        },
+        "PROTECTION": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 3,
+            "rate": 0
+          },
+          "expected": 0,
+          "matched": 0
+        },
+        "RESOURCE": {
+          "citation": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 1,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {
+        "SOFTENED_BY": {
+          "citation": {
+            "numerator": 3,
+            "denominator": 3,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 3,
+            "rate": 0
+          },
+          "expected": 1,
+          "matched": 0
+        }
+      },
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-01",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-02",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-03",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-04",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-05",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-06",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-07",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-08",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-09",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "adv-10",
+      "category": "adversarial-injection",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "tp-01",
+      "category": "third-party",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {
+        "BELIEF": {
+          "citation": {
+            "numerator": 1,
+            "denominator": 1,
+            "rate": 1
+          },
+          "entailment": {
+            "numerator": 0,
+            "denominator": 0,
+            "rate": null
+          },
+          "expected": 0,
+          "matched": 0
+        }
+      },
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "tp-02",
+      "category": "third-party",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "tp-03",
+      "category": "third-party",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "tp-04",
+      "category": "third-party",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "tp-05",
+      "category": "third-party",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "flat-01",
+      "category": "flat",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "flat-02",
+      "category": "flat",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "flat-03",
+      "category": "flat",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "flat-04",
+      "category": "flat",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    },
+    {
+      "caseId": "flat-05",
+      "category": "flat",
+      "nodeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodeRecallIncludingShadow": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "nodePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgeRecall": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "edgePrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "citationPrecision": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "semanticEntailment": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "perNodeType": {},
+      "perEdgeType": {},
+      "forbiddenViolations": [],
+      "flatFalseMaterializations": 0,
+      "proposerStatus": "complete"
+    }
+  ]
+}
