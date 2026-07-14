@@ -480,10 +480,18 @@ export async function writeLensGhosts(
   }
 
   // Keys the new selection dropped: archive UNCHARGED ghosts (spec §1 —
-  // nothing is deleted; charged ghosts sever gracefully per §7, and the
-  // charged predicate joins HypothesisEvidenceLink at migration 8).
+  // nothing is deleted). "Charged" is LINK-BASED, never mass-based (§7):
+  // EXISTS(active HypothesisEvidenceLink) — a CONTRADICTED mass-0 ghost
+  // counts as charged and SURVIVES the drop and the budget cap, because
+  // being wrong is the product's claim. Charged survivors keep flying
+  // outside the ghost budget entirely.
   for (const n of active) {
     if (!keptKeys.has(n.ontologyKey!)) {
+      const charged = await tx.hypothesisEvidenceLink.findFirst({
+        where: { nodeId: n.id, invalidatedAt: null },
+        select: { id: true },
+      });
+      if (charged) continue; // lived words hold it on the sky
       await tx.psycheNode.update({ where: { id: n.id }, data: { archivedAt: now } });
       report.archived++;
     }

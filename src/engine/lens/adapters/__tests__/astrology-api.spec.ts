@@ -215,6 +215,9 @@ dbSuite("importChartFromProvider — provider errors are atomic failures", () =>
     await prisma.$disconnect();
   });
   beforeEach(async () => {
+    await prisma.hypothesisEvidenceLink.deleteMany();
+    await prisma.hypothesisConfirmation.deleteMany();
+    await prisma.matcherRun.deleteMany();
     await prisma.evidence.deleteMany();
     await prisma.psycheEdge.deleteMany();
     await prisma.psycheNode.deleteMany();

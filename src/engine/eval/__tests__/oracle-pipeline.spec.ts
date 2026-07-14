@@ -37,6 +37,9 @@ suite("oracle calibration — hand labels through the full persisted path score 
   beforeAll(async () => {
     await prisma.$connect();
     // fresh slate (FK order matters)
+    await prisma.hypothesisEvidenceLink.deleteMany();
+    await prisma.hypothesisConfirmation.deleteMany();
+    await prisma.matcherRun.deleteMany();
     await prisma.proposal.deleteMany();
     await prisma.extractionRun.deleteMany();
     await prisma.evidence.deleteMany();

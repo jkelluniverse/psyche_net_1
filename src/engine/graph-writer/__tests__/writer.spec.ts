@@ -67,6 +67,9 @@ suite("graph writer — GateResult → Prisma per the v1.6 outcome mapping", () 
   });
   beforeEach(async () => {
     // fresh slate per test (order matters for FKs)
+    await prisma.hypothesisEvidenceLink.deleteMany();
+    await prisma.hypothesisConfirmation.deleteMany();
+    await prisma.matcherRun.deleteMany();
     await prisma.proposal.deleteMany();
     await prisma.extractionRun.deleteMany();
     await prisma.evidence.deleteMany();

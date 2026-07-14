@@ -55,6 +55,8 @@ model User {
   // Practitioner ↔ client links (a practitioner user has many clients).
   clientLinks   PractitionerClient[] @relation("practitioner")
   practitioners PractitionerClient[] @relation("client")
+  matcherRuns   MatcherRun[]
+  confirmationsGiven HypothesisConfirmation[] @relation("confirmingPractitioner")
   safetyFlags   SafetyFlag[]         // back-relation for SafetyFlag.user (LAW 7)
 
   @@index([role])
@@ -255,6 +257,10 @@ model PsycheNode {
   outEdges     PsycheEdge[] @relation("source")
   inEdges      PsycheEdge[] @relation("target")
   experiments  Experiment[]
+  // Migration 8: the charge carrier (D-R2 — evidence LINKED, never copied)
+  // and the authority overlay (D-R7 — state only, never mass).
+  hypothesisLinks HypothesisEvidenceLink[]
+  confirmations   HypothesisConfirmation[]
 
   @@index([userId, type])
   @@index([userId, provenance])
@@ -382,6 +388,87 @@ model Evidence {
   @@index([sourceEventId])
   @@index([nodeId])
   @@index([edgeId])
+
+  // Migration 8: links referencing this row (SetNull on erasure — the link's
+  // evidenceIdWas copy survives as id-only audit, never content).
+  hypothesisLinks HypothesisEvidenceLink[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE CHARGE CARRIER + AUTHORITY OVERLAY (migration 8; renderer-lens spec §3.1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// How a match becomes state — and un-becomes it. One span, one Evidence row,
+// referenced twice (D-R2): the matcher writes LINKS, never copies. Links are
+// INVALIDATED, never silently cascaded; `evidenceIdWas` is copied at INSERT
+// (safe under every cascade ordering — the audit survives the FK as id only,
+// never content). Constraints Prisma can't express — enforced via migration 8:
+//   - partial unique (nodeId, evidenceId) WHERE evidenceId IS NOT NULL
+//   - CHECK invalidationCause IN ('SOURCE_INVALIDATED','LAW8_ERASURE','MANUAL')
+//   - CHECK (invalidatedAt IS NULL) = (invalidationCause IS NULL)
+//   - CHECK length(evidenceIdWas) > 0
+model HypothesisEvidenceLink {
+  id            String      @id @default(cuid())
+  node          PsycheNode  @relation(fields: [nodeId], references: [id])
+  nodeId        String
+  evidence      Evidence?   @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+  evidenceId    String?
+  // Copy-at-insert audit id (r3 A-3): copy-at-retraction would read NULL
+  // after a SetNull. Id only — never quote, never content.
+  evidenceIdWas String
+  matchRuleVersion String
+  matchedAt     DateTime
+  run           MatcherRun  @relation(fields: [runId], references: [id])
+  runId         String
+  invalidatedAt      DateTime?
+  invalidationCause  String?   // SOURCE_INVALIDATED | LAW8_ERASURE | MANUAL
+  invalidatedByRunId String?
+
+  @@index([nodeId, invalidatedAt])
+}
+
+// The derivation object that makes "why is this ghost ACTIVE" answerable.
+// Links written by a run are derived from the link table's runId FK — never
+// duplicated into a blob.
+model MatcherRun {
+  id       String @id @default(cuid())
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+  // 'PASS:<extractionRunId>' | 'RETRACTION' | 'IMPORT_REMAP' | 'CONFIRMATION'
+  trigger  String
+  // Prior hypothesis states + trigger payload (chartImportId, lensMapVersion,
+  // retracted ids…) — what replay needs, never free text.
+  inputs   Json
+  matcherConfigVersion String
+  matchRuleVersion     String
+  // [{nodeId, from, to, massBefore, massAfter, rule}] per affected hypothesis.
+  transitions Json
+  createdAt DateTime @default(now())
+  links     HypothesisEvidenceLink[]
+
+  @@index([userId, createdAt])
+}
+
+// D-R7: practitioner confirmation is AUTHORITY, NOT EVIDENCE — its own
+// carrier, applied by the matcher AFTER nextState as an overlay: state only,
+// never mass (a confirmed-but-evidence-thin node looks confirmed-but-thin).
+// Reversible and contestable: withdrawal recomputes via trigger 4; severance
+// of the practitioner relationship withdraws the overlay's effect (checked
+// live at recompute, never cached).
+model HypothesisConfirmation {
+  id             String     @id @default(cuid())
+  practitioner   User       @relation("confirmingPractitioner", fields: [practitionerId], references: [id])
+  practitionerId String
+  node           PsycheNode @relation(fields: [nodeId], references: [id])
+  nodeId         String
+  // 'AFFIRM' (HYPOTHESIS→ACTIVE) | 'GROUND' (grounds a CONTRADICTED) —
+  // CHECK via migration 8.
+  direction      String
+  at             DateTime   @default(now())
+  appliedByRunId String?
+  withdrawnAt    DateTime?
+
+  @@index([nodeId, withdrawnAt])
 }
 
 enum EvidenceRole {

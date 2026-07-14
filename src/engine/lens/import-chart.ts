@@ -21,6 +21,8 @@ import { LENS_CONFIG_V1, selectGhosts } from "./select-ghosts";
 import type { LensTemplate } from "./lens-map.v1";
 import { writeLensGhosts } from "../graph-writer/writer";
 import { GATE_CONFIG_V1 } from "../citation-gate/config";
+import { MATCHER_CONFIG_V1 } from "../hypothesis-match/config";
+import { runMatcherForUser } from "../hypothesis-match/matcher";
 
 export interface BirthInputs {
   birthDate: string;
@@ -250,6 +252,28 @@ async function runImport(
       stateAlgorithmVersion: GATE_CONFIG_V1.stateAlgorithmVersion,
       gateVersion: GATE_CONFIG_V1.gateVersion,
     },
+    now,
+  });
+
+  // Trigger 3 (spec §3.1): a lens import/remap runs a FULL-GRAPH matcher
+  // pass — new/changed ghosts vs ALL standing extracted nodes — inside this
+  // same transaction. Delta-only matching would silently fail the
+  // chart-added-after-journaling flow, which is the demo script itself.
+  // Mode is derived from the LIVE engagement, never hardcoded.
+  const supervised = await tx.practitionerClient.findFirst({
+    where: { clientId: userId },
+    select: { id: true },
+  });
+  const mode = supervised ? ("SUPERVISED" as const) : ("SOLO" as const);
+  await runMatcherForUser(tx, {
+    userId,
+    trigger: "IMPORT_REMAP",
+    triggerPayload: {
+      chartImportId: row.id,
+      lensMapVersion: selection.lensMapVersion,
+    },
+    config: { ...MATCHER_CONFIG_V1, mode },
+    gateConfig: { ...GATE_CONFIG_V1, mode },
     now,
   });
 

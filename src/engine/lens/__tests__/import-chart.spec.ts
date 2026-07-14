@@ -58,6 +58,9 @@ suite("lens import transaction — parser → selector → writer", () => {
     await prisma.$disconnect();
   });
   beforeEach(async () => {
+    await prisma.hypothesisEvidenceLink.deleteMany();
+    await prisma.hypothesisConfirmation.deleteMany();
+    await prisma.matcherRun.deleteMany();
     await prisma.proposal.deleteMany();
     await prisma.extractionRun.deleteMany();
     await prisma.evidence.deleteMany();
@@ -175,6 +178,130 @@ suite("lens import transaction — parser → selector → writer", () => {
         data: { userId, type: "LENS", provenance: "LENS", label: "illegal", ontologyKey: "pattern.core", state: "HYPOTHESIS" },
       }),
     ).rejects.toThrow();
+  });
+
+  it("DEMO PATH (test 8): journal first, chart second — the import transaction itself charges the ghost", async () => {
+    const userId = await mkUser();
+    // The person journaled BEFORE any chart existed.
+    const content = "I only open up when I feel safe first.";
+    const quote = "I only open up when I feel safe first";
+    const src = await prisma.sourceEvent.create({
+      data: {
+        userId, kind: "JOURNAL_TEXT", content, authorship: "SELF",
+        occurredAt: new Date(NOW.getTime() - 86_400_000),
+      },
+    });
+    const src2 = await prisma.sourceEvent.create({
+      data: {
+        userId, kind: "JOURNAL_TEXT", content, authorship: "SELF",
+        occurredAt: new Date(NOW.getTime() - 2 * 86_400_000),
+      },
+    });
+    await prisma.psycheNode.create({
+      data: {
+        userId, type: "PATTERN", provenance: "EXTRACTED",
+        label: "needs safety before opening", state: "ACTIVE",
+        mass: 0.8, confidence: 0.7,
+        // The chart's tier-1 emotional-authority key — independently extracted.
+        ontologyKey: "pattern.deep-feeling-needs-safety",
+        evidence: {
+          create: [src, src2].map((s) => ({
+            sourceEventId: s.id, quote,
+            spanStart: content.indexOf(quote),
+            spanEnd: content.indexOf(quote) + quote.length,
+            occurredAt: s.occurredAt, polarity: "SUPPORTING", validated: true,
+          })),
+        },
+      },
+    });
+
+    // NOW the chart arrives (emotional authority → that same key, tier 1).
+    const r = await importChart(prisma, {
+      userId, system: "human_design", provider: "astrology-api.io",
+      birth: BIRTH, rawChart: CHART, now: NOW,
+    });
+    expect(r.ok).toBe(true);
+
+    const charged = await prisma.psycheNode.findFirst({
+      where: {
+        userId, provenance: "LENS",
+        ontologyKey: "pattern.deep-feeling-needs-safety",
+      },
+    });
+    expect(charged).not.toBeNull();
+    expect(charged!.state).toBe("ACTIVE"); // the chart guessed; the words had already said it
+    expect(charged!.mass).toBeGreaterThan(0);
+    const run = await prisma.matcherRun.findFirstOrThrow({
+      where: { userId, trigger: "IMPORT_REMAP" },
+    });
+    expect(await prisma.hypothesisEvidenceLink.count({ where: { runId: run.id } })).toBe(2);
+  });
+
+  it("a CHARGED ghost survives a remap that drops its key (tests 11 + 15: link-based, outside the budget)", async () => {
+    const userId = await mkUser();
+    // Journal + full chart → the emotional-authority ghost gets charged.
+    const content = "I only open up when I feel safe first.";
+    const quote = "I only open up when I feel safe first";
+    const srcs = [];
+    for (let i = 0; i < 2; i++) {
+      srcs.push(await prisma.sourceEvent.create({
+        data: {
+          userId, kind: "JOURNAL_TEXT", content, authorship: "SELF",
+          occurredAt: new Date(NOW.getTime() - (i + 1) * 86_400_000),
+        },
+      }));
+    }
+    await prisma.psycheNode.create({
+      data: {
+        userId, type: "PATTERN", provenance: "EXTRACTED",
+        label: "needs safety before opening", state: "ACTIVE",
+        mass: 0.8, confidence: 0.7,
+        ontologyKey: "pattern.deep-feeling-needs-safety",
+        evidence: {
+          create: srcs.map((s) => ({
+            sourceEventId: s.id, quote,
+            spanStart: content.indexOf(quote),
+            spanEnd: content.indexOf(quote) + quote.length,
+            occurredAt: s.occurredAt, polarity: "SUPPORTING", validated: true,
+          })),
+        },
+      },
+    });
+    await importChart(prisma, {
+      userId, system: "human_design", provider: "astrology-api.io",
+      birth: BIRTH, rawChart: CHART, now: NOW,
+    });
+    const charged = await prisma.psycheNode.findFirstOrThrow({
+      where: { userId, provenance: "LENS", ontologyKey: "pattern.deep-feeling-needs-safety" },
+    });
+    expect(charged.state).toBe("ACTIVE"); // fixture sanity
+
+    // Re-import a chart WITHOUT the emotional authority — its key drops out
+    // of the selection. The charged ghost must survive; being wrong-or-right
+    // is now the lived record's claim, not the chart's.
+    const differentChart = {
+      human_design: {
+        type: "Projector",
+        authority: "Splenic",
+        defined_centers: ["Head", "Ajna", "Spleen", "Root"],
+      },
+      natal: { sun_sign: "Leo", moon_sign: "Pisces", ascendant_sign: "Aries" },
+    };
+    const r = await importChart(prisma, {
+      userId, system: "human_design", provider: "astrology-api.io",
+      birth: BIRTH, rawChart: differentChart, now: new Date(NOW.getTime() + 60_000),
+    });
+    expect(r.ok).toBe(true);
+
+    const survivor = await prisma.psycheNode.findUniqueOrThrow({ where: { id: charged.id } });
+    expect(survivor.archivedAt).toBeNull(); // survived the drop, outside the budget
+    expect(survivor.state).toBe("ACTIVE");
+    // …while uncharged dropped ghosts DID archive.
+    expect(
+      await prisma.psycheNode.count({
+        where: { userId, provenance: "LENS", archivedAt: { not: null } },
+      }),
+    ).toBeGreaterThan(0);
   });
 
   it("a remap that drops a key archives the UNCHARGED ghost (nothing is deleted)", async () => {
