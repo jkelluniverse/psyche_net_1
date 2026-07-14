@@ -23,14 +23,16 @@ export default async function SkyPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const graph = await loadSkyGraph(prisma, user.id);
+  const now = new Date();
+  const graph = await loadSkyGraph(prisma, user.id, now);
   const vm = skyProjection(
     graph.nodes,
     graph.edges,
-    new Date(),
+    now,
     stableSeed(user.id),
     { role: "INDIVIDUAL" },
     RENDERER_CONFIG_V2,
+    graph.matchLinks,
   );
   const list = listModel(vm);
 

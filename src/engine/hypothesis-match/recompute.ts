@@ -128,6 +128,35 @@ async function loadActiveConfirmations(
   return live;
 }
 
+/** The pending-confirmation rule (test 14), defined ONCE: in SUPERVISED
+ * mode the evidence would justify CONTRADICTED but authority hasn't spoken.
+ * The loader consumes this for the view model; the matcher applies the same
+ * condition when holding state — a second definition would drift. */
+export function isPendingConfirmation(
+  merged: EvidenceRecord[],
+  args: {
+    currentState: NodeState;
+    nodeType: NodeType;
+    provenance: Provenance;
+    mode: MatcherConfig["mode"];
+    hasActiveGround: boolean;
+    now: Date;
+    gateConfig: GateConfig;
+  },
+): boolean {
+  if (args.mode !== "SUPERVISED") return false;
+  if (args.currentState === "CONTRADICTED") return false;
+  if (args.hasActiveGround) return false;
+  const computed = nextState(
+    "HYPOTHESIS",
+    merged,
+    { nodeType: args.nodeType, provenance: args.provenance },
+    args.now,
+    args.gateConfig,
+  );
+  return computed.state === "CONTRADICTED";
+}
+
 /** Recompute one hypothesis node. Pure arithmetic + the overlay; the caller
  * owns the transaction and the MatcherRun row. */
 export async function recomputeHypothesis(

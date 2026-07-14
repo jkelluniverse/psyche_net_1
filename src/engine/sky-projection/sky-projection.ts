@@ -144,6 +144,10 @@ function projectNode(
     struck: stateTreatment?.struck ?? false,
     evidenceCount: validEvidence.length,
     provenanceCopy,
+    pendingConfirmation: n.pendingConfirmation,
+    pendingConfirmationCopy: n.pendingConfirmation
+      ? (config.pendingConfirmationCopy ?? "Pending your practitioner's review.")
+      : null,
   };
 }
 

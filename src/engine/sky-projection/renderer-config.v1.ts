@@ -64,6 +64,9 @@ export interface RendererConfig {
     BECOMING: string;
     PRACTITIONER: string;
   };
+  /** SUPERVISED pending-confirmation copy (test 14). Optional: v1 predates
+   * the confirmation carrier; v2 carries it. */
+  pendingConfirmationCopy?: string;
   /** Checkpoint rule: ghost labels from an unblessed (draft) lens map carry
    * this suffix on every surface. Removed only by the map version flipping
    * to canon — never by a renderer opting out. */

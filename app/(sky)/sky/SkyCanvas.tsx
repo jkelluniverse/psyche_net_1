@@ -495,6 +495,11 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
               ? (selected.provenanceCopy ?? "No evidence recorded yet.")
               : `${selected.evidenceCount} piece${selected.evidenceCount === 1 ? "" : "s"} of evidence from your own words:`}
           </p>
+          {selected.pendingConfirmationCopy && (
+            <p className="mt-1 text-sm text-wine/90">
+              {selected.pendingConfirmationCopy}
+            </p>
+          )}
           {selected.evidenceCount > 0 && !selected.veiled && (
             <div className="max-h-48 overflow-y-auto">
               <EvidenceList nodeId={selected.id} />

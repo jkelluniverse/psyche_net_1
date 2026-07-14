@@ -28,6 +28,7 @@ export interface ListNodeEntry {
   /** The ghost badge for HYPOTHESIS entries; null otherwise. */
   hypothesisBadge: string | null;
   provenanceCopy: string | null;
+  pendingConfirmationCopy: string | null;
   dimmed: boolean;
   struck: boolean;
 }
@@ -112,6 +113,7 @@ function toNodeEntry(n: SkyNodeVM): ListNodeEntry {
     evidenceCount: n.evidenceCount,
     hypothesisBadge: n.ghost?.badge ?? null,
     provenanceCopy: n.provenanceCopy,
+    pendingConfirmationCopy: n.pendingConfirmationCopy,
     dimmed: n.dimmed,
     struck: n.struck,
   };

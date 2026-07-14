@@ -1,19 +1,32 @@
 // SKY LOADER — persisted graph → the projection's input views.
 //
 // The only module that turns Prisma rows into PersistedNodeView /
-// PersistedEdgeView. Active (non-archived) rows only; effectiveEvidence is
-// the node's own Evidence rows with `sourceInvalidatedAt` live-joined from
-// the SourceEvent — the projection re-filters fail-closed, but the truth is
-// loaded here, never cached. HypothesisEvidenceLink (linked evidence, r2 A-2)
-// and Evidence-row invalidation arrive with migration 8: until then linked
-// evidence is an empty contribution and `invalidatedAt` is honestly null —
-// the CONTRACT (types.ts) already carries both, so the matcher build extends
-// this query without touching the projection.
+// PersistedEdgeView. Active (non-archived) rows only. Since migration 8:
+// - effectiveEvidence (r2 A-2) = the node's OWN Evidence rows ∪ rows linked
+//   via live HypothesisEvidenceLink — each LIVE-JOINED to the current
+//   SourceEvent (authorship, invalidatedAt read at load time, never cached),
+//   canonically sorted (occurredAt, then evidenceId), deduplicated. A
+//   charged ghost brightens and explains itself exactly like an extracted
+//   node, because it reads the same rows.
+// - matchLinks: the NON-PERSISTED rendering overlay (LensMatchLinkView[])
+//   computed from the link table — what the matched-pair treatment renders.
+// - pendingConfirmation: derived through the matcher's OWN exported rule
+//   (isPendingConfirmation) — a second definition here would drift.
+// Conferring is the GATE's isConferring, imported — never restated.
 
 import type { PrismaClient } from "@prisma/client";
+import { GATE_CONFIG_V1 } from "../citation-gate/config";
 import { isConferring } from "../citation-gate/mass";
+import { isPendingConfirmation } from "../hypothesis-match/recompute";
+import type {
+  EvidenceRecord,
+  NodeState,
+  NodeType,
+  Provenance,
+} from "../contracts/extraction-contracts";
 import type {
   EffectiveEvidenceView,
+  LensMatchLinkView,
   PersistedEdgeView,
   PersistedNodeView,
 } from "./types";
@@ -21,21 +34,84 @@ import type {
 export interface SkyGraph {
   nodes: PersistedNodeView[];
   edges: PersistedEdgeView[];
+  matchLinks: LensMatchLinkView[];
+}
+
+interface JoinedEvidence {
+  id: string;
+  spanStart: number;
+  spanEnd: number;
+  quote: string;
+  occurredAt: Date;
+  polarity: "SUPPORTING" | "COUNTERVAILING";
+  role: "SUPPORT" | "DECLARATION" | "ENACTMENT";
+  sourceEventId: string;
+  sourceEvent: { authorship: "SELF" | "PRACTITIONER"; invalidatedAt: Date | null };
+}
+
+const evidenceInclude = {
+  sourceEvent: {
+    select: { authorship: true, invalidatedAt: true },
+  },
+} as const;
+
+function toView(e: JoinedEvidence, nodeType: NodeType): EffectiveEvidenceView {
+  return {
+    evidenceId: e.id,
+    authorship: e.sourceEvent.authorship,
+    spanStart: e.spanStart,
+    spanEnd: e.spanEnd,
+    occurredAt: e.occurredAt,
+    polarity: e.polarity,
+    conferring: isConferring(
+      {
+        authorship: e.sourceEvent.authorship,
+        role: e.role,
+        sourceInvalidatedAt: e.sourceEvent.invalidatedAt,
+      },
+      nodeType,
+    ),
+    normalizationVersion: "v1",
+    invalidatedAt: null, // Evidence-row-level invalidation has no column: LAW-8 erasure deletes the row
+    sourceInvalidatedAt: e.sourceEvent.invalidatedAt,
+  };
+}
+
+function toRecord(e: JoinedEvidence): EvidenceRecord {
+  return {
+    sourceEventId: e.sourceEventId,
+    quote: e.quote,
+    spanStart: e.spanStart,
+    spanEnd: e.spanEnd,
+    occurredAt: e.occurredAt,
+    authorship: e.sourceEvent.authorship,
+    role: e.role,
+    polarity: e.polarity,
+    sourceInvalidatedAt: e.sourceEvent.invalidatedAt,
+  };
 }
 
 export async function loadSkyGraph(
   prisma: PrismaClient,
   userId: string,
+  now: Date = new Date(),
 ): Promise<SkyGraph> {
-  const [nodes, edges] = await Promise.all([
+  const [nodes, edges, supervised] = await Promise.all([
     prisma.psycheNode.findMany({
       where: { userId, archivedAt: null },
       include: {
         evidence: {
-          include: {
-            sourceEvent: { select: { invalidatedAt: true, authorship: true } },
-          },
+          include: evidenceInclude,
           orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+        },
+        hypothesisLinks: {
+          where: { invalidatedAt: null, evidenceId: { not: null } },
+          include: {
+            evidence: { include: evidenceInclude },
+          },
+        },
+        confirmations: {
+          where: { withdrawnAt: null },
         },
       },
       orderBy: { id: "asc" },
@@ -44,10 +120,66 @@ export async function loadSkyGraph(
       where: { userId, archivedAt: null },
       orderBy: { id: "asc" },
     }),
+    prisma.practitionerClient.findFirst({
+      where: { clientId: userId },
+      select: { id: true },
+    }),
   ]);
+  const mode = supervised ? ("SUPERVISED" as const) : ("SOLO" as const);
+  const gateConfig = { ...GATE_CONFIG_V1, mode };
 
-  return {
-    nodes: nodes.map((n) => ({
+  const matchLinks: LensMatchLinkView[] = [];
+
+  const nodeViews = nodes.map((n): PersistedNodeView => {
+    // Merged, deduplicated, canonically ordered effective evidence.
+    const seen = new Set<string>();
+    const joined: JoinedEvidence[] = [];
+    for (const e of n.evidence as unknown as JoinedEvidence[]) {
+      if (!seen.has(e.id)) {
+        seen.add(e.id);
+        joined.push(e);
+      }
+    }
+    const byExtractedNode = new Map<string, string[]>();
+    for (const l of n.hypothesisLinks) {
+      const ev = l.evidence as unknown as (JoinedEvidence & { nodeId: string | null }) | null;
+      if (!ev) continue;
+      if (!seen.has(ev.id)) {
+        seen.add(ev.id);
+        joined.push(ev);
+      }
+      if (ev.nodeId) {
+        const list = byExtractedNode.get(ev.nodeId) ?? [];
+        list.push(ev.id);
+        byExtractedNode.set(ev.nodeId, list);
+      }
+    }
+    for (const [extractedNodeId, evidenceIds] of byExtractedNode) {
+      matchLinks.push({
+        lensNodeId: n.id,
+        extractedNodeId,
+        evidenceIds: evidenceIds.sort(),
+      });
+    }
+    joined.sort(
+      (a, b) =>
+        a.occurredAt.getTime() - b.occurredAt.getTime() ||
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+    );
+
+    const pendingConfirmation =
+      n.provenance === "LENS" &&
+      isPendingConfirmation(joined.map(toRecord), {
+        currentState: n.state as NodeState,
+        nodeType: n.type as NodeType,
+        provenance: n.provenance as Provenance,
+        mode,
+        hasActiveGround: n.confirmations.some((c) => c.direction === "GROUND"),
+        now,
+        gateConfig,
+      });
+
+    return {
       id: n.id,
       type: n.type,
       provenance: n.provenance,
@@ -58,30 +190,13 @@ export async function loadSkyGraph(
       state: n.state,
       lensMapVersion: n.lensMapVersion,
       chartImportId: n.chartImportId,
-      effectiveEvidence: n.evidence.map(
-        (e): EffectiveEvidenceView => ({
-          evidenceId: e.id,
-          authorship: e.sourceEvent.authorship,
-          spanStart: e.spanStart,
-          spanEnd: e.spanEnd,
-          occurredAt: e.occurredAt,
-          polarity: e.polarity,
-          // The GATE's rule, imported — never restated (this line once
-          // restated it wrong: D8 makes ENACTMENT confer on every type).
-          conferring: isConferring(
-            {
-              authorship: e.sourceEvent.authorship,
-              role: e.role,
-              sourceInvalidatedAt: e.sourceEvent.invalidatedAt,
-            },
-            n.type,
-          ),
-          normalizationVersion: e.normalizationVersion,
-          invalidatedAt: null, // Evidence-row invalidation is a migration-8 column
-          sourceInvalidatedAt: e.sourceEvent.invalidatedAt,
-        }),
-      ),
-    })),
+      pendingConfirmation,
+      effectiveEvidence: joined.map((e) => toView(e, n.type as NodeType)),
+    };
+  });
+
+  return {
+    nodes: nodeViews,
     edges: edges.map(
       (e): PersistedEdgeView => ({
         id: e.id,
@@ -91,6 +206,11 @@ export async function loadSkyGraph(
         strength: e.strength,
         confidence: e.confidence,
       }),
+    ),
+    matchLinks: matchLinks.sort(
+      (a, b) =>
+        (a.lensNodeId < b.lensNodeId ? -1 : a.lensNodeId > b.lensNodeId ? 1 : 0) ||
+        (a.extractedNodeId < b.extractedNodeId ? -1 : 1),
     ),
   };
 }

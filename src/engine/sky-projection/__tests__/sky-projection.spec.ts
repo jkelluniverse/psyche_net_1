@@ -70,6 +70,7 @@ const node = (o: Partial<PersistedNodeView>): PersistedNodeView => ({
   state: "ACTIVE",
   lensMapVersion: null,
   chartImportId: null,
+  pendingConfirmation: false,
   effectiveEvidence: [ev()],
   ...o,
 });

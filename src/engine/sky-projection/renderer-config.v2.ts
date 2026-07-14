@@ -66,6 +66,8 @@ export const RENDERER_CONFIG_V2: RendererConfig = {
     PRACTITIONER:
       "Your practitioner's observation — nothing in your words yet confirms this.",
   },
+  pendingConfirmationCopy:
+    "A second countervailing reading is waiting on your practitioner's review — nothing is decided yet.",
   draftWatermark: {
     suffix: " — draft reading",
   },

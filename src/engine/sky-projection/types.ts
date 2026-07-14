@@ -47,6 +47,10 @@ export interface PersistedNodeView {
   state: NodeState;
   lensMapVersion: string | null;
   chartImportId: string | null;
+  /** Test 14 (D-R7): SUPERVISED + evidence-would-contradict + authority has
+   * not spoken. Derived by the loader through the matcher's OWN exported
+   * rule — fail-closed, never silence. */
+  pendingConfirmation: boolean;
   effectiveEvidence: EffectiveEvidenceView[];
 }
 
@@ -121,6 +125,10 @@ export interface SkyNodeVM {
    * ("From your chart — nothing in your words yet confirms this."); null
    * when the node has an evidence story to tell. */
   provenanceCopy: string | null;
+  /** SUPERVISED pending-confirmation state (test 14) — explicit, never
+   * silent; copy from config when set. */
+  pendingConfirmation: boolean;
+  pendingConfirmationCopy: string | null;
 }
 
 export interface SkyEdgeVM {
