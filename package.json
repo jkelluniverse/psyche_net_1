@@ -11,7 +11,8 @@
     "postinstall": "prisma generate",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:db": "vitest run src/engine/graph-writer"
+    "test:db": "vitest run src/engine/graph-writer src/engine/eval",
+    "eval:fidelity": "tsx scripts/run-eval.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
