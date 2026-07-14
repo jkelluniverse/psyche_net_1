@@ -156,6 +156,20 @@ model ChartImport {
   summary    String?   // LLM-ready summary if provided
   importedAt DateTime  @default(now())
 
+  // Migration 7 (renderer-lens spec §7): atomic-failure + idempotency +
+  // replay stamps. status=error rows are retryable and carry zero nodes.
+  status                   String  @default("ok") // "ok" | "error"
+  // Canonical hash of normalized birth inputs + tz + provider + system —
+  // never the provider's JSON bytes (field order is theirs, not meaning).
+  chartFingerprint         String?
+  provider                 String?
+  parserVersion            String?
+  featureVocabularyVersion String?
+  lensMapVersion           String?
+  lensConfigVersion        String?
+  // Partial unique (userId, system, chartFingerprint) WHERE fingerprint
+  // IS NOT NULL — enforced via migration 7 raw SQL (Prisma can't express it).
+
   lensNodes  PsycheNode[]  // lens-provenance nodes derived from this chart
 
   @@index([userId, system])
@@ -203,8 +217,12 @@ model PsycheNode {
   // LENS-provenance nodes trace back to the chart they came from (they have no
   // SourceEvent evidence at birth — this is their provenance link). Nullable;
   // set only for provenance = LENS. (Fixes: lens nodes were previously untethered.)
-  chartImport   ChartImport? @relation(fields: [chartImportId], references: [id])
+  chartImport   ChartImport? @relation(fields: [chartImportId], references: [id], onDelete: SetNull)
   chartImportId String?
+  // Migration 7: which lens-map version minted/last-updated this ghost.
+  // Partial unique (userId, ontologyKey) WHERE provenance='LENS' AND
+  // archivedAt IS NULL + CHECK lens-requires-key — via migration 7 raw SQL.
+  lensMapVersion String?
 
   // Version stamps so tuned arithmetic stays auditable (no un-versioned tuning).
   massAlgorithmVersion       String @default("v1")

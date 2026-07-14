@@ -44,6 +44,7 @@ suite("oracle calibration — hand labels through the full persisted path score 
     await prisma.psycheNode.deleteMany();
     await prisma.shadowCandidate.deleteMany();
     await prisma.sourceEvent.deleteMany();
+    await prisma.chartImport.deleteMany();
     await prisma.practitionerClient.deleteMany();
     await prisma.user.deleteMany();
 

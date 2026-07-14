@@ -74,6 +74,7 @@ suite("graph writer — GateResult → Prisma per the v1.6 outcome mapping", () 
     await prisma.psycheNode.deleteMany();
     await prisma.shadowCandidate.deleteMany();
     await prisma.sourceEvent.deleteMany();
+    await prisma.chartImport.deleteMany();
     await prisma.practitionerClient.deleteMany();
     await prisma.user.deleteMany();
   });

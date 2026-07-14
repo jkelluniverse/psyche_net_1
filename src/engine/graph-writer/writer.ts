@@ -395,3 +395,98 @@ export async function loadShadowBuffer(
     };
   });
 }
+
+// ── The lens lane's write surface (renderer-lens spec §1; banner computer 3) ─
+//
+// Lens ghosts arrive through the writer like everything else — the writer is
+// the single choke-point where version stamps land. Upsert semantics honor
+// the migration-7 partial unique ((userId, ontologyKey) WHERE provenance=LENS
+// AND active): unchanged keys update in place (same node id, never re-minted),
+// new keys create, and keys absent from the new selection archive their
+// UNCHARGED ghosts (charged = has an active HypothesisEvidenceLink — that
+// table lands in migration 8; until then every lens ghost is structurally
+// uncharged and the predicate is constant, revisited with the matcher build).
+
+export interface LensGhostInput {
+  type: string;
+  label: string;
+  ontologyKey: string;
+  lensMapVersion: string;
+}
+
+export interface WriteLensGhostsInput {
+  userId: string;
+  chartImportId: string;
+  ghosts: LensGhostInput[];
+  /** From gate config — the module that owns the constants owns the stamps. */
+  confidenceFloor: number;
+  stamps: {
+    massAlgorithmVersion: string;
+    confidenceAlgorithmVersion: string;
+    stateAlgorithmVersion: string;
+    gateVersion: string;
+  };
+  now: Date;
+}
+
+/** Runs inside the caller's transaction (the import transaction owns atomicity). */
+export async function writeLensGhosts(
+  tx: Prisma.TransactionClient,
+  input: WriteLensGhostsInput,
+): Promise<{ created: number; updated: number; archived: number }> {
+  const { userId, chartImportId, ghosts, confidenceFloor, stamps, now } = input;
+  const report = { created: 0, updated: 0, archived: 0 };
+  const keptKeys = new Set(ghosts.map((g) => g.ontologyKey));
+
+  const active = await tx.psycheNode.findMany({
+    where: { userId, provenance: "LENS", archivedAt: null },
+  });
+  const activeByKey = new Map(active.map((n) => [n.ontologyKey!, n]));
+
+  for (const g of ghosts) {
+    const existing = activeByKey.get(g.ontologyKey);
+    if (existing) {
+      await tx.psycheNode.update({
+        where: { id: existing.id },
+        data: {
+          label: g.label,
+          chartImportId,
+          lensMapVersion: g.lensMapVersion,
+          confidence: confidenceFloor,
+          ...stamps,
+          computedAt: now,
+        },
+      });
+      report.updated++;
+    } else {
+      await tx.psycheNode.create({
+        data: {
+          userId,
+          type: g.type as never,
+          provenance: "LENS",
+          label: g.label,
+          ontologyKey: g.ontologyKey,
+          chartImportId,
+          lensMapVersion: g.lensMapVersion,
+          mass: 0,
+          confidence: confidenceFloor,
+          state: "HYPOTHESIS",
+          ...stamps,
+          computedAt: now,
+        },
+      });
+      report.created++;
+    }
+  }
+
+  // Keys the new selection dropped: archive UNCHARGED ghosts (spec §1 —
+  // nothing is deleted; charged ghosts sever gracefully per §7, and the
+  // charged predicate joins HypothesisEvidenceLink at migration 8).
+  for (const n of active) {
+    if (!keptKeys.has(n.ontologyKey!)) {
+      await tx.psycheNode.update({ where: { id: n.id }, data: { archivedAt: now } });
+      report.archived++;
+    }
+  }
+  return report;
+}
