@@ -1,5 +1,6 @@
 /**
- * lens-map.v1.ts — STARTER SET (Jacob's draft; v1-draft until he stamps it canon)
+ * lens-map.v1.ts — CANON v1 (Jacob's editorial blessing, 2026-07-14; drafted
+ * as v1-draft, corrected at lens-map review, blessed after the production walk)
  * Chart features → hypothesis node templates. Deterministic: same chart, same ghosts.
  *
  * PHRASING RULES (ghost integrity — every label must pass all four; lens-map.spec.ts
@@ -37,7 +38,10 @@ export interface LensTemplate {
   priority: 1 | 2 | 3;
 }
 
-export const LENS_MAP_VERSION = "v1-draft";
+// Canon on Jacob's explicit blessing only (checkpoint rule, ghost-sky
+// milestone §6). Any FUTURE map revision starts life as "<v>-draft" again —
+// the renderer's watermark mechanism keys on the "-draft" suffix and stays.
+export const LENS_MAP_VERSION = "v1";
 
 export const lensMap: LensTemplate[] = [
   // ── HUMAN DESIGN · TYPE (tier 1 — one fires per chart) ─────────────────────
