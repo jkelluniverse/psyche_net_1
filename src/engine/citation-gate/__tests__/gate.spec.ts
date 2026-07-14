@@ -1145,7 +1145,7 @@ describe("empty and versioned output", () => {
 
   it("every GateResult carries the full version stamp set (auditability)", () => {
     const result = gate(proposals(), sourceMap(), EMPTY_GRAPH, [], NOW);
-    expect(result.gateVersion).toBe("v1.6");
+    expect(result.gateVersion).toBe("v1.7");
     expect(result.normalizationVersion).toBe("v1");
     expect(result.massAlgorithmVersion).toBe("v1.1");
     expect(result.confidenceAlgorithmVersion).toBe("v1.1");
@@ -1177,5 +1177,76 @@ describe("empty and versioned output", () => {
       { tempId: "n1", ontologyKey: "belief.selfabandonment.novel" },
     ]);
     expect(known.ontologyCandidates).toEqual([]);
+  });
+});
+
+describe("test 19 — v1.7 dedupe provenance scoping (D-R3: no cross-lane side doors)", () => {
+  it("a same-type, same-label LENS node is NEVER a merge target for an extracted proposal", () => {
+    // Renderer-lens round 1, A-2: before v1.7, the generic type+label dedupe
+    // could merge extracted evidence into a LENS hypothesis inside the gate —
+    // charging it without the post-gate matcher's countervailing guards.
+    // Lens hypotheses carry DOMAIN types (D-R4), so the collision is real.
+    const lensGhost = existingNode("lens-1", "Saying yes when I mean no", [], {
+      type: "PATTERN",
+      provenance: "LENS",
+      state: "HYPOTHESIS",
+    });
+    const sources = sourceMap(src("e1", JOURNAL_1), src("e2", JOURNAL_2));
+    const result = gate(
+      proposals([
+        node("n1", "Saying yes when I mean no", [
+          ev("e1", "saying yes when I want to say no"),
+          ev("e2", "I wanted to say no"),
+        ], { type: "PATTERN" }),
+      ]),
+      sources,
+      { nodes: [lensGhost], edges: [] },
+      [],
+      NOW,
+    );
+    // The extracted proposal materializes as ITS OWN node — the lens ghost is
+    // charged only by the post-gate matcher, never by the gate's dedupe.
+    expect(result.acceptedNodes).toHaveLength(1);
+    expect(result.acceptedNodes[0].existingNodeId).toBeUndefined();
+    expect(result.acceptedNodes[0].provenance).toBe("EXTRACTED");
+  });
+
+  it("same-provenance dedupe still merges (practitioner lane keeps its idempotence)", () => {
+    const prior = existingNode("pr-1", "Unworthiness", [], {
+      type: "BELIEF",
+      provenance: "PRACTITIONER",
+      state: "HYPOTHESIS",
+    });
+    const result = gate(
+      proposals([node("n1", "Unworthiness", [], { provenance: "PRACTITIONER" })]),
+      sourceMap(),
+      { nodes: [prior], edges: [] },
+      [],
+      NOW,
+    );
+    expect(result.acceptedNodes).toHaveLength(1);
+    expect(result.acceptedNodes[0].existingNodeId).toBe("pr-1");
+  });
+
+  it("the becoming label-matcher (gate-owned) still fires for extracted proposals", () => {
+    const becoming = existingNode("becoming-1", "Calm under conflict", [], {
+      type: "BECOMING",
+      provenance: "BECOMING",
+      state: "HYPOTHESIS",
+    });
+    const sources = sourceMap(src("e1", "Today I stayed calm under conflict at work."));
+    const result = gate(
+      proposals([
+        node("n1", "Calm under conflict", [
+          ev("e1", "stayed calm under conflict", { role: "ENACTMENT" }),
+        ], { type: "TRAIT" }),
+      ]),
+      sources,
+      { nodes: [becoming], edges: [] },
+      [],
+      NOW,
+    );
+    expect(result.acceptedNodes).toHaveLength(1);
+    expect(result.acceptedNodes[0].existingNodeId).toBe("becoming-1");
   });
 });

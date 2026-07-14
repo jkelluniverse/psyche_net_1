@@ -81,7 +81,7 @@ suite("graph writer — GateResult → Prisma per the v1.6 outcome mapping", () 
   it("PIPELINE KEYSTONE: raw model output → wrapper → gate → writer → persisted rows match the outcome mapping (incl. shadow + WAITING_ENDPOINT)", async () => {
     const { userId, sources } = await seedUserAndSources();
     const run = await prisma.extractionRun.create({
-      data: { userId, provider: "stub", model: "stub", promptVersion: "v2", ontologyVersion: "v1", gateVersion: "v1.6", status: "running" },
+      data: { userId, provider: "stub", model: "stub", promptVersion: "v2", ontologyVersion: "v1", gateVersion: "v1.7", status: "running" },
     });
 
     const modelOutput = JSON.stringify({
@@ -169,7 +169,7 @@ suite("graph writer — GateResult → Prisma per the v1.6 outcome mapping", () 
     expect(nodes[0].label).toBe("Saying yes when I mean no");
     expect(nodes[0].mass).toBeGreaterThan(0);
     expect(nodes[0].state).toBe("ACTIVE");
-    expect(nodes[0].gateVersion).toBe("v1.6");
+    expect(nodes[0].gateVersion).toBe("v1.7");
     expect(report.nodeIdByTempId["n-accept"]).toBe(nodes[0].id);
 
     // ── Evidence: validated=true, spans slice the source (CHECKs held) ──
@@ -219,7 +219,7 @@ suite("graph writer — GateResult → Prisma per the v1.6 outcome mapping", () 
     const { userId, sources } = await seedUserAndSources();
     const mkRun = () =>
       prisma.extractionRun.create({
-        data: { userId, provider: "stub", model: "stub", promptVersion: "v2", ontologyVersion: "v1", gateVersion: "v1.6", status: "running" },
+        data: { userId, provider: "stub", model: "stub", promptVersion: "v2", ontologyVersion: "v1", gateVersion: "v1.7", status: "running" },
       });
 
     // Pass 1: single mention → shadow
@@ -289,7 +289,7 @@ suite("graph writer — GateResult → Prisma per the v1.6 outcome mapping", () 
   it("edges between persisted nodes write with resolved endpoints and edge evidence", async () => {
     const { userId, sources } = await seedUserAndSources();
     const run = await prisma.extractionRun.create({
-      data: { userId, provider: "stub", model: "stub", promptVersion: "v2", ontologyVersion: "v1", gateVersion: "v1.6", status: "running" },
+      data: { userId, provider: "stub", model: "stub", promptVersion: "v2", ontologyVersion: "v1", gateVersion: "v1.7", status: "running" },
     });
     const out = JSON.stringify({
       nodes: [
@@ -323,7 +323,7 @@ suite("graph writer — GateResult → Prisma per the v1.6 outcome mapping", () 
   it("the writer is atomic: a failing row rolls the whole pass back", async () => {
     const { userId, sources } = await seedUserAndSources();
     const run = await prisma.extractionRun.create({
-      data: { userId, provider: "stub", model: "stub", promptVersion: "v2", ontologyVersion: "v1", gateVersion: "v1.6", status: "running" },
+      data: { userId, provider: "stub", model: "stub", promptVersion: "v2", ontologyVersion: "v1", gateVersion: "v1.7", status: "running" },
     });
     const out = JSON.stringify({
       nodes: [

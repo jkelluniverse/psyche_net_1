@@ -206,8 +206,16 @@ export function gate(
   }
 
   // ── Prior-graph and shadow lookups (spec §3.1a, §7) ────────────────────────
+  // v1.7 (renderer-lens round 1, D-R3): dedupe/merge targets are scoped to the
+  // PROPOSAL'S OWN PROVENANCE. Before this, the generic type+label lookup let
+  // an extracted proposal merge into a same-label LENS (or PRACTITIONER)
+  // hypothesis inside the gate — charging it through a side door that
+  // bypasses the post-gate matcher's countervailing guards. The single
+  // sanctioned cross-provenance path remains the gate-owned BECOMING
+  // label-matcher below. Same-provenance merging is preserved so each
+  // hypothesis lane keeps its idempotence.
   const existingByKey = new Map(
-    priorGraph.nodes.map((n) => [matchKey(n.type, n.label), n] as const),
+    priorGraph.nodes.map((n) => [`${n.provenance}::${matchKey(n.type, n.label)}`, n] as const),
   );
   // v1.5 (D5's pipeline test forced the seam): the minimal deterministic
   // hypothesis-matcher. An EXTRACTED proposal whose normalized label exactly
@@ -253,7 +261,7 @@ export function gate(
     // Merge target: same-key existing node, or (for EXTRACTED proposals) an
     // existing BECOMING hypothesis with the exact same normalized label.
     const existingTarget =
-      existingByKey.get(key) ??
+      existingByKey.get(`${p.provenance}::${key}`) ??
       (p.provenance === "EXTRACTED" ? becomingByLabel.get(normalizeQuote(p.label)) : undefined);
     // Conferring is computed against the TARGET node's type (an enactment of
     // a becoming quality confers on the becoming node, not on a phantom).

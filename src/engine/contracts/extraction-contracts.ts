@@ -27,6 +27,14 @@ export type NodeType =
   | "TRAIT"
   | "RESOURCE"
   | "BECOMING"
+  /**
+   * DEPRECATED-NEVER-WRITTEN (renderer-lens v1.1, D-R4): a lens hypothesis
+   * carries its DOMAIN type (BELIEF/PROTECTION/…) with provenance = LENS —
+   * otherwise the post-gate matcher's type comparison is structurally
+   * unmatchable. Kept in the enum for migration cleanliness; a DB CHECK
+   * (migration 6) rejects any row with type = LENS. Remove in a later
+   * migration once nothing references it.
+   */
   | "LENS";
 
 /**

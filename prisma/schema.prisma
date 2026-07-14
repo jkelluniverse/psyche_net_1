@@ -198,10 +198,13 @@ model PsycheNode {
   state        NodeState    @default(ACTIVE)
   luminosity   Float        @default(0)     // recency/activity + integration
 
-  // Rendering hints (position may be engine-managed; persisted for continuity).
-  x            Float?
-  y            Float?
-  colorHint    String?
+  // Rendering hints were REMOVED here (renderer-lens round 1, A-4/D-R3 ruling):
+  // persisted x/y/colorHint contradicted the domain/rendering firewall
+  // (CLAUDE.md; renderer spec §2). Layout continuity comes from the fixed
+  // per-user seed; any future layout cache lives in a rendering-only store,
+  // never on domain tables. Migration 6 drops the columns and adds the
+  // lens-typing CHECK (D-R4: NodeType.LENS is deprecated-never-written —
+  // lens hypotheses carry DOMAIN types with provenance = LENS).
 
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
