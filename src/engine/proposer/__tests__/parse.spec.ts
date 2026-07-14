@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { runProposer } from "../proposer";
+import { computeFenceNonce } from "../prompt";
 import { gate } from "../../citation-gate/gate";
 import { sourceMap } from "../../citation-gate/__tests__/fixtures";
 import {
@@ -50,6 +51,46 @@ describe("partial validity (§13.10)", () => {
     const result = await runProposer(input(), stub.call);
     expect(result.output.nodes).toHaveLength(0);
     expect(result.rejectedCandidates[0].reason).toMatch(/evidence/i);
+  });
+
+  it("a nonce-prefixed citation (the fence reads <<<SRC:nonce:id>>>) canonicalizes to the real id", async () => {
+    // Live-model failure mode (first fidelity run, prompt v2): the model read
+    // "the source id" as everything after SRC:, citing "nonce:id". The
+    // wrapper knows this run's nonce, so the alias is deterministic and
+    // unambiguous — canonicalize instead of discarding real evidence.
+    const nonce = computeFenceNonce("run-1"); // fixture input() runId
+    const response = JSON.stringify({
+      nodes: [
+        {
+          tempId: "n1",
+          type: "PATTERN",
+          label: "Saying yes",
+          evidence: [{ sourceEventId: `${nonce}:e1`, quote: "saying yes when I want to say no" }],
+        },
+      ],
+      edges: [],
+    });
+    const stub = stubModel(response);
+    const result = await runProposer(input(), stub.call);
+    expect(result.output.nodes).toHaveLength(1);
+    expect(result.output.nodes[0].evidence[0].sourceEventId).toBe("e1"); // canonical
+  });
+
+  it("a WRONG nonce prefix does not alias — only this run's own fence nonce is trusted", async () => {
+    const response = JSON.stringify({
+      nodes: [
+        {
+          tempId: "n1",
+          type: "PATTERN",
+          label: "Saying yes",
+          evidence: [{ sourceEventId: "deadbeefdeadbeef:e1", quote: "saying yes" }],
+        },
+      ],
+      edges: [],
+    });
+    const stub = stubModel(response);
+    const result = await runProposer(input(), stub.call);
+    expect(result.output.nodes).toHaveLength(0); // filtered, fail-closed
   });
 });
 

@@ -61,7 +61,8 @@ export async function runProposer(
   const ctx = buildBlindedContext(input);
   const serializedContext = serializeExtractionContext(ctx);
   const system = renderSystemPrompt(ctx);
-  const user = renderUserMessage(ctx, computeFenceNonce(input.runId));
+  const nonce = computeFenceNonce(input.runId);
+  const user = renderUserMessage(ctx, nonce);
 
   const meta = {
     runId: input.runId,
@@ -96,12 +97,16 @@ export async function runProposer(
     };
   }
 
-  // Per-candidate validation (partial validity, §10.3).
+  // Per-candidate validation (partial validity, §10.3). The alias map
+  // canonicalizes the one deterministic citation variant the fence format
+  // invites — "nonce:id" (models sometimes cite everything after "SRC:").
   const allowedSourceIds = new Set(input.sources.map((s) => s.id));
+  const sourceIdAliases = new Map(input.sources.map((s) => [`${nonce}:${s.id}`, s.id]));
   const { nodes, edges, rejected } = validateCandidates(
     envelope.nodes,
     envelope.edges,
     allowedSourceIds,
+    sourceIdAliases,
   );
 
   // Deterministic policy guards (§7/§9/§12).

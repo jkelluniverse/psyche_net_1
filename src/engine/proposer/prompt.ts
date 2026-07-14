@@ -15,7 +15,12 @@
 import { createHash } from "node:crypto";
 import type { BlindedExtractionContext } from "./types";
 
-export const PROMPT_VERSION = "v2";
+// v3: explicit sourceEventId citation rule — the first live fidelity run
+// (prompt v2, claude-sonnet-5) showed the model reading "the source id" as
+// everything after "SRC:" in the fence, citing "nonce:id" and losing 28/33
+// node candidates to NO_VALID_EVIDENCE. The wrapper also canonicalizes that
+// exact variant deterministically (parse.ts), so the fix is belt-and-braces.
+export const PROMPT_VERSION = "v3";
 
 /** Deterministic per-run fence nonce (same runId → same bytes, so the
  * blinding keystone's byte-identity holds across hypothesis presence). */
@@ -57,7 +62,8 @@ EXISTING NODES (for deduplication and edge wiring — reference them by id with 
 
 OUTPUT: strict JSON only — no prose, no code fences — matching:
 {"nodes":[{"tempId":string,"type":string,"label":string,"ontologyKey"?:string,"inferenceDistance"?:string,"modelReportedConfidence"?:number,"evidence":[{"sourceEventId":string,"quote":string,"offsetHint"?:number,"role"?:string,"polarity"?:string,"inferenceDistance"?:string,"evidenceRationale"?:string}]}],"edges":[{"tempId":string,"source":{"kind":"PROPOSED","tempId":string}|{"kind":"EXISTING","nodeId":string},"target":same,"type":string,"evidence":[…]}]}
-Cite only the source ids provided in the data blocks. Do not invent ids.`;
+Cite only the source ids provided in the data blocks. Do not invent ids.
+CITATION RULE: each data block opens with <<<SRC:nonce:id>>>. The "sourceEventId" you cite is ONLY the final id segment (after the second colon, before >>>), never the nonce, never the full marker.`;
 
 /** Hash of the exact template (audit — human version strings drift). */
 export const PROMPT_TEMPLATE_HASH = createHash("sha256")

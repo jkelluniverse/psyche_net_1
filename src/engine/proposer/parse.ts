@@ -83,8 +83,18 @@ interface EvidenceValidation {
  * Validate an evidence array. Shape-invalid entries fail the candidate
  * (fail-closed); entries citing ids outside the provided source set are
  * filtered (the model cannot mint or reference unknown ids, §4).
+ *
+ * `sourceIdAliases` maps deterministic, run-known variants to canonical ids.
+ * Today exactly one class exists: the fence-prefixed form `${nonce}:${id}` —
+ * the fence reads <<<SRC:nonce:id>>> and live models sometimes cite
+ * everything after "SRC:". Only THIS run's nonce ever aliases (the map is
+ * built by the wrapper from its own nonce); any other prefix stays filtered.
  */
-function validateEvidence(raw: unknown, allowedSourceIds: ReadonlySet<string>): EvidenceValidation {
+function validateEvidence(
+  raw: unknown,
+  allowedSourceIds: ReadonlySet<string>,
+  sourceIdAliases?: ReadonlyMap<string, string>,
+): EvidenceValidation {
   if (!Array.isArray(raw)) return { ok: false, evidence: [], reason: "evidence is not an array" };
   const out: ProposedEvidence[] = [];
   for (const entry of raw) {
@@ -101,9 +111,12 @@ function validateEvidence(raw: unknown, allowedSourceIds: ReadonlySet<string>): 
     if (e.polarity !== undefined && !POLARITIES.has(e.polarity as string)) {
       return { ok: false, evidence: [], reason: `unknown polarity "${String(e.polarity)}"` };
     }
-    if (!allowedSourceIds.has(e.sourceEventId)) continue; // minted id → filtered
+    const canonical = allowedSourceIds.has(e.sourceEventId)
+      ? e.sourceEventId
+      : sourceIdAliases?.get(e.sourceEventId);
+    if (canonical === undefined) continue; // minted id → filtered
     out.push({
-      sourceEventId: e.sourceEventId,
+      sourceEventId: canonical,
       quote: e.quote,
       ...(typeof e.offsetHint === "number" && Number.isFinite(e.offsetHint)
         ? { offsetHint: e.offsetHint }
@@ -140,6 +153,7 @@ export function validateCandidates(
   rawNodes: unknown[],
   rawEdges: unknown[],
   allowedSourceIds: ReadonlySet<string>,
+  sourceIdAliases?: ReadonlyMap<string, string>,
 ): CandidateValidationResult {
   const nodes: RawValidatedNode[] = [];
   const edges: RawValidatedEdge[] = [];
@@ -172,7 +186,7 @@ export function validateCandidates(
       reject("missing or malformed label");
       continue;
     }
-    const ev = validateEvidence(n.evidence, allowedSourceIds);
+    const ev = validateEvidence(n.evidence, allowedSourceIds, sourceIdAliases);
     if (!ev.ok) {
       reject(`malformed evidence: ${ev.reason}`);
       continue;
@@ -230,7 +244,7 @@ export function validateCandidates(
       reject("malformed endpoint NodeRef");
       continue;
     }
-    const ev = validateEvidence(e.evidence ?? [], allowedSourceIds);
+    const ev = validateEvidence(e.evidence ?? [], allowedSourceIds, sourceIdAliases);
     if (!ev.ok) {
       reject(`malformed evidence: ${ev.reason}`);
       continue;
