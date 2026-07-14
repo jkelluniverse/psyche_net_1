@@ -19,8 +19,9 @@ export interface AnthropicAdapterConfig {
 export const ANTHROPIC_ADAPTER_DEFAULTS = {
   model: "claude-sonnet-5",
   maxTokens: 4096,
-  // Low temperature reduces variance; it does not create trust (§12).
-  temperature: 0,
+  // Claude 5-family models reject sampling params (temperature/top_p/top_k
+  // return 400). Variance is steered by the prompt; determinism was never a
+  // trust source anyway — the gate is (§12).
 } as const;
 
 export function buildAnthropicCaller(config: AnthropicAdapterConfig): CallModel {
@@ -29,7 +30,6 @@ export function buildAnthropicCaller(config: AnthropicAdapterConfig): CallModel 
     const response = await client.messages.create({
       model: config.model,
       max_tokens: config.maxTokens,
-      temperature: ANTHROPIC_ADAPTER_DEFAULTS.temperature,
       system,
       messages: [{ role: "user", content: user }],
     });
