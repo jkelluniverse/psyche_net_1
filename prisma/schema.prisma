@@ -162,7 +162,21 @@ model ChartImport {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// THE DERIVED GRAPH: nodes, edges, evidence (never written except via the gate)
+// THE DERIVED GRAPH: nodes, edges, evidence.
+// Written ONLY through the graph writer — the single choke-point where every
+// version stamp, outcome mapping, and recompute trigger lives. The writer has
+// exactly THREE sanctioned upstream computers (renderer-lens spec v1.2, A-5):
+//   1. the citation gate      — verifies quotes against source text; the
+//                                trust boundary for everything evidence-borne;
+//   2. the hypothesis matcher — post-gate, deterministic, versioned; the only
+//                                charging path for LENS hypotheses;
+//   3. the lens lane          — deterministic chart→ghost mapping. It does NOT
+//                                pass through the gate, deliberately: the gate
+//                                verifies quotes, and lens nodes have none — a
+//                                gate pass would be trivially true, and a check
+//                                that cannot fail launders trust instead of
+//                                creating it.
+// Anything else writing these tables is a bug, not a fourth author.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model PsycheNode {

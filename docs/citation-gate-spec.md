@@ -387,4 +387,4 @@ Maintain a small **ground-truth eval corpus**: synthetic journals with hand-labe
 
 Every distinctive claim Psyche-Net makes — "nothing is true until your life says so," "we show you your chart being wrong," "the instrument that shows what it doesn't know," the entire trust and safety story, the patent framing — reduces to this: *a deterministic gate that only lets validated, self-authored evidence confer reality on the map.* The beautiful physics, the constellation, the ceremonies are all downstream. If the gate is honest, the product is honest. Build it first. Test it hardest. Never route around it.
 
-*— End of citation gate spec v1.6. Provisional and revisable, like everything here — but the nine laws it enforces are not.*
+*— End of citation gate spec v1.7. Provisional and revisable, like everything here — but the nine laws it enforces are not.*
