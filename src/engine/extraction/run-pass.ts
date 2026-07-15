@@ -37,7 +37,7 @@ import type { CallModel, ProposerInput } from "../proposer/types";
 import { livePolicyFor } from "./live-policy";
 
 export interface RunPassResult {
-  ok: boolean;
+  ok: true;
   runId: string;
   proposerStatus: string;
   sourcesExtracted: number;
