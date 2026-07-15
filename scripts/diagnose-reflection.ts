@@ -60,10 +60,23 @@ async function main(): Promise<void> {
     `\nShadowCandidates: ${shadow.length} (materialization needs ${GATE_CONFIG_V1.materialization.minConferringSpans} spans across ${GATE_CONFIG_V1.materialization.minDistinctSources} distinct sources)`,
   );
   for (const s of shadow) {
+    // Pass attribution: which run window this candidate was minted in.
+    const mintedBy = runs.find(
+      (r, i) =>
+        s.createdAt >= r.startedAt &&
+        (i + 1 >= runs.length || s.createdAt < runs[i + 1].startedAt),
+    );
     console.log(
-      `  ${s.candidateKey}\n    waiting=${s.waitingReason} timesSeen=${s.timesSeen} distinctSources=${s.distinctSources} lastSeen=${s.lastSeen.toISOString()}`,
+      `  ${s.candidateKey}\n    waiting=${s.waitingReason} timesSeen=${s.timesSeen} distinctSources=${s.distinctSources} created=${s.createdAt.toISOString()} mintedByRun=${mintedBy?.id ?? "?"} lastSeen=${s.lastSeen.toISOString()}`,
     );
   }
+  const accumulated = shadow.filter((s) => s.timesSeen > 1).length;
+  console.log(
+    `\nACCUMULATION: ${accumulated}/${shadow.length} candidates have timesSeen > 1` +
+      (accumulated === 0 && runs.length > 1
+        ? " — ZERO cross-pass accumulation despite multiple passes (candidate-identity finding)"
+        : ""),
+  );
 
   const nodes = await prisma.psycheNode.findMany({
     where: { userId: user.id, archivedAt: null },
