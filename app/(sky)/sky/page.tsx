@@ -50,12 +50,20 @@ export default async function SkyPage() {
             Add your birth data to place the first hypothesis stars — faint
             ghosts your own words can later confirm or contradict.
           </p>
-          <Link
-            href="/sky/birth"
-            className="mt-6 inline-block rounded-md bg-wine px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-wine-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine"
-          >
-            Add birth data
-          </Link>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Link
+              href="/sky/birth"
+              className="rounded-md bg-wine px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-wine-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine"
+            >
+              Add birth data
+            </Link>
+            <Link
+              href="/journal"
+              className="rounded-md border border-wine/40 px-5 py-2.5 text-sm font-medium text-wine transition-colors hover:bg-wine/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine"
+            >
+              Write an entry
+            </Link>
+          </div>
         </div>
       ) : (
         <>
@@ -66,6 +74,14 @@ export default async function SkyPage() {
             Positions are a rendering convenience, not a claim — meaning lives
             in the stars, their light, and the drawn connections only.
           </p>
+          <div className="mt-4 text-center">
+            <Link
+              href="/journal"
+              className="text-sm text-wine underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine"
+            >
+              Write in your journal
+            </Link>
+          </div>
           <div className="mt-12">
             <ListView list={list} />
           </div>
