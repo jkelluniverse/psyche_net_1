@@ -18,6 +18,7 @@ import { GATE_CONFIG_V1, type GateConfig } from "./config";
 import { computeConfidence } from "./confidence";
 import { locateQuote } from "./locate";
 import { computeMass, isConferring } from "./mass";
+import { ONTOLOGY_KEY_SET } from "../ontology/ontology";
 import { normalizeQuote, normalizeWithMap, type NormalizedText } from "./normalize";
 import { nextState } from "./state";
 import type {
@@ -45,9 +46,94 @@ interface EvidenceFailure {
   detail: string;
 }
 
-/** Documented dedupe/merge match key (spec §7): type + normalized label. */
-function matchKey(type: NodeType, label: string): string {
+/** Documented dedupe/merge match key (spec §7): type + normalized label.
+ * Exported for the identity-v2 backfill planner — same key, one definition. */
+export function matchKey(type: NodeType, label: string): string {
   return `${type}::${normalizeQuote(label)}`;
+}
+
+// ── Candidate identity v2 (gate v1.8; the D + scoped-A ruling) ──────────────
+// Scoped to the SHADOW JOIN exclusively: in-pass dedupe and outcome
+// inheritance stay on the exact label key. The vocabulary is the warrant:
+// specific KNOWN keys join on (type, key); `.core` fallbacks (where the
+// prompt funnels collision mass) join only with the label-similarity
+// tiebreak AND the evidence-disjointness guard; novel keys never join on
+// key alone.
+
+// Exported (with labelJaccard/dedupeVerified/lowestDistance) so the one-time
+// identity-v2 backfill reuses THESE rules — re-implementation drift would make
+// the buffer disagree with the live join.
+export const isSpecificKnownKey = (key: string | undefined): key is string =>
+  !!key && ONTOLOGY_KEY_SET.has(key as never) && !key.endsWith(".core");
+export const isCoreKnownKey = (key: string | undefined): key is string =>
+  !!key && ONTOLOGY_KEY_SET.has(key as never) && key.endsWith(".core");
+
+export function labelJaccard(a: string, b: string): number {
+  const ta = new Set(normalizeQuote(a).split(/\s+/).filter(Boolean));
+  const tb = new Set(normalizeQuote(b).split(/\s+/).filter(Boolean));
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  return inter / (ta.size + tb.size - inter);
+}
+
+type NodeShadow = Extract<ShadowCandidate, { kind: "node" }>;
+
+/** Deterministic multi-holder resolution: richest cache first, then
+ * candidateKey ascending — same inputs, same join, forever. */
+const holderOrder = (a: NodeShadow, b: NodeShadow): number =>
+  b.evidenceCache.length - a.evidenceCache.length ||
+  a.candidateKey.localeCompare(b.candidateKey);
+
+function resolveShadowJoin(
+  p: ProposedNode,
+  exactKey: string,
+  shadowByKey: Map<string, ShadowCandidate>,
+  consumedShadowKeys: Set<string>,
+  incoming: VerifiedEvidence[],
+  config: GateConfig,
+): ShadowCandidate | undefined {
+  const exact = shadowByKey.get(exactKey);
+  if (exact && !consumedShadowKeys.has(exactKey)) return exact;
+
+  const holders = [...shadowByKey.values()].filter(
+    (s): s is NodeShadow =>
+      s.kind === "node" &&
+      !consumedShadowKeys.has(s.candidateKey) &&
+      s.type === p.type,
+  );
+  if (isSpecificKnownKey(p.ontologyKey)) {
+    return holders
+      .filter((s) => s.ontologyKey === p.ontologyKey)
+      .sort(holderOrder)[0];
+  }
+  if (isCoreKnownKey(p.ontologyKey)) {
+    const incomingSources = new Set(incoming.map((e) => e.sourceEventId));
+    return holders
+      .filter(
+        (s) =>
+          s.ontologyKey === p.ontologyKey &&
+          labelJaccard(s.label, p.label) >=
+            config.candidateIdentity.coreJoinLabelJaccardMin &&
+          // Evidence-disjointness guard: genuine recurrence across entries,
+          // never the same entry re-read under a reworded label.
+          !s.evidenceCache.some((e) => incomingSources.has(e.sourceEventId)),
+      )
+      .sort(holderOrder)[0];
+  }
+  return undefined;
+}
+
+/** Rule 3 (ruled): on a join across different labels, the candidate with the
+ * MOST evidence spans names the node; tie → earliest (the already-held
+ * candidate — it was heard first). */
+function winningLabel(
+  shadow: ShadowCandidate | undefined,
+  incomingLabel: string,
+  incomingSpans: number,
+): string {
+  if (!shadow || shadow.kind !== "node") return incomingLabel;
+  return shadow.evidenceCache.length >= incomingSpans ? shadow.label : incomingLabel;
 }
 
 function evidenceKey(e: {
@@ -60,7 +146,7 @@ function evidenceKey(e: {
   return [e.sourceEventId, e.spanStart, e.spanEnd, e.role, e.polarity].join("|");
 }
 
-function dedupeVerified(evidence: VerifiedEvidence[]): VerifiedEvidence[] {
+export function dedupeVerified(evidence: VerifiedEvidence[]): VerifiedEvidence[] {
   const seen = new Set<string>();
   const out: VerifiedEvidence[] = [];
   for (const e of evidence) {
@@ -106,7 +192,7 @@ function dedupeRecords(records: EvidenceRecord[]): EvidenceRecord[] {
  * lower inference distance" made deterministic. Undefined sightings carry no
  * classification and are ignored.
  */
-function lowestDistance(
+export function lowestDistance(
   a: InferenceDistance | undefined,
   b: InferenceDistance | undefined,
   order: readonly string[],
@@ -279,9 +365,17 @@ export function gate(
         continue;
       }
       if (verified.length === 0) {
-        // Fail-closed: nothing verifiable survives — reject with the first
-        // concrete failure (the hallucinated quote is surfaced for telemetry).
-        rejected.push({ tempId: p.tempId, kind: "node", stage: "GATE", ...failures[0] });
+        // Fail-closed: nothing verifiable survives. The reason is the first
+        // concrete failure; the detail carries EVERY per-evidence failure
+        // (telemetry pull-forward, ruled 2026-07-15 — paraphrase loss must
+        // be countable, not anecdotal).
+        rejected.push({
+          tempId: p.tempId,
+          kind: "node",
+          stage: "GATE",
+          reason: failures[0].reason,
+          detail: failures.map((f) => `${f.reason}: ${f.detail}`).join(" | "),
+        });
         continue;
       }
     }
@@ -291,7 +385,13 @@ export function gate(
 
     const existing = existingTarget;
     const shadow =
-      !existing && p.provenance === "EXTRACTED" ? shadowByKey.get(key) : undefined;
+      !existing && p.provenance === "EXTRACTED"
+        ? resolveShadowJoin(p, key, shadowByKey, consumedShadowKeys, verified, config)
+        : undefined;
+    // Rule 3: the join's deterministic label (identical to p.label when no
+    // join or exact-key join with same wording).
+    const joinedLabel = winningLabel(shadow, p.label, verified.length);
+    const joinedKey = matchKey(p.type, joinedLabel);
 
     const combined = dedupeRecords([
       ...(existing ? existing.evidence : []),
@@ -319,12 +419,13 @@ export function gate(
       const m = config.materialization;
       if (heldHighInference || spans < m.minConferringSpans || distinct < m.minDistinctSources) {
         const cache = dedupeVerified([...(shadow?.evidenceCache ?? []), ...verified]);
-        updatedShadow.set(key, {
+        if (shadow) consumedShadowKeys.add(shadow.candidateKey); // the JOINED holder's key, not the label key
+        updatedShadow.set(joinedKey, {
           kind: "node",
-          candidateKey: key,
+          candidateKey: joinedKey,
           type: p.type,
           provenance: p.provenance,
-          label: p.label,
+          label: joinedLabel,
           ontologyKey: (shadow?.kind === "node" ? shadow.ontologyKey : undefined) ?? p.ontologyKey, // first-seen wins (A-4)
           timesSeen: (shadow?.timesSeen ?? 0) + 1,
           distinctSources: new Set(cache.map((c) => c.sourceEventId)).size,
@@ -336,7 +437,8 @@ export function gate(
           lastSeen: now,
         });
         consumedShadowKeys.add(key);
-        shadowedByTemp.set(p.tempId, key);
+        consumedShadowKeys.add(joinedKey);
+        shadowedByTemp.set(p.tempId, joinedKey);
         rejected.push({
           tempId: p.tempId,
           kind: "node",
@@ -350,7 +452,7 @@ export function gate(
         });
         continue;
       }
-      if (shadow) consumedShadowKeys.add(key); // promoted out of the buffer
+      if (shadow) consumedShadowKeys.add(shadow.candidateKey); // promoted out of the buffer (the JOINED holder's key)
     }
 
     // Arithmetic — mass, state, confidence: pure functions, versioned.
@@ -381,7 +483,7 @@ export function gate(
       // On merge, the TARGET node's identity wins (a becoming stays BECOMING).
       type: existing?.type ?? p.type,
       provenance: existing?.provenance ?? p.provenance,
-      label: existing?.label ?? p.label,
+      label: existing?.label ?? joinedLabel, // rule 3: most spans wins; tie → earliest
       ontologyKey: p.ontologyKey,
       // Newly verified spans, plus the promoted shadow cache on materialization.
       evidence: dedupeVerified([...(shadow?.evidenceCache ?? []), ...verified]),

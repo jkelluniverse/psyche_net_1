@@ -73,6 +73,10 @@ export interface ProposerInput {
   /** SELF-authored only — the builder refuses anything else (§4). */
   sources: SourceRecord[];
   priorNodes: CandidatePriorNode[];
+  /** D (identity ruling, 2026-07-15): labels of the person's own once-heard
+   * shadow candidates — extracted-lane echoes, not hypotheses. LABELS ONLY;
+   * counts/dates/evidence never enter the context. */
+  heldShadowLabels?: string[];
   ontology: OntologyView;
   policy: ExtractionPolicy;
   /** Ties proposals to an ExtractionRun (audit). */
@@ -88,6 +92,8 @@ export interface BlindedExtractionContext {
   contractVersion: string;
   sources: { id: string; content: string; occurredAt: string }[];
   priorExtractedNodes: PriorNodeView[];
+  /** Once-heard theme labels (D). Sorted, deduplicated, strings only. */
+  heldShadowThemes: string[];
   ontology: {
     ontologyVersion: string;
     /** Filtered to the policy's allowed types — forbidden types are absent, not discouraged. */

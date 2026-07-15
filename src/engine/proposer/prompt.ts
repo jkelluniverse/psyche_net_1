@@ -20,7 +20,7 @@ import type { BlindedExtractionContext } from "./types";
 // everything after "SRC:" in the fence, citing "nonce:id" and losing 28/33
 // node candidates to NO_VALID_EVIDENCE. The wrapper also canonicalizes that
 // exact variant deterministically (parse.ts), so the fix is belt-and-braces.
-export const PROMPT_VERSION = "v3";
+export const PROMPT_VERSION = "v4"; // v4 = held shadow themes (D) + known-key-first guidance (identity ruling)
 
 /** Deterministic per-run fence nonce (same runId → same bytes, so the
  * blinding keystone's byte-identity holds across hypothesis presence). */
@@ -54,8 +54,11 @@ CONSERVATISM RULES:
 - Never diagnose.
 - Never propose a node about a named third party's psychology. Only the author's inner structures. "My mother is cruel" is about the mother — do not propose it. "I go silent when my mother criticizes me" is the author's own pattern — propose that.
 
-KNOWN ONTOLOGY KEYS (you may propose a new dotted key when none fits; it will be reviewed by humans):
+KNOWN ONTOLOGY KEYS — choose the CLOSEST known key when one fits the theme; when none fits, use the generic <type>.core key (e.g. pattern.core); propose a new dotted key ONLY when neither fits (it will be reviewed by humans):
 {{ONTOLOGY_KEYS}}
+
+THEMES HEARD ONCE BEFORE (from this person's earlier entries; not yet on their map). If — and only if — one of these themes GENUINELY recurs in today's words, reuse the exact label only if the theme genuinely recurs; never force a fit, never stretch today's words toward an old theme:
+{{HELD_THEMES}}
 
 EXISTING NODES (for deduplication and edge wiring — reference them by id with {"kind":"EXISTING","nodeId":"…"}):
 {{PRIOR_NODES}}
@@ -85,9 +88,12 @@ export function renderSystemPrompt(ctx: BlindedExtractionContext): string {
     ctx.priorExtractedNodes
       .map((n) => `- ${n.id} [${n.type}] ${n.label}`)
       .join("\n") || "(none yet)";
+  const heldThemes =
+    ctx.heldShadowThemes.map((t) => `- ${t}`).join("\n") || "(none yet)";
   return SYSTEM_TEMPLATE.replace("{{NODE_TYPES}}", nodeTypes)
     .replace("{{ONTOLOGY_KEYS}}", keys)
-    .replace("{{PRIOR_NODES}}", priors);
+    .replace("{{PRIOR_NODES}}", priors)
+    .replace("{{HELD_THEMES}}", heldThemes);
 }
 
 /**

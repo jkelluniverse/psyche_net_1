@@ -172,9 +172,17 @@ export async function runExtractionPass(
     },
   });
 
+  // D (identity ruling): the proposer sees the person's own once-heard
+  // theme labels — LABELS ONLY — so recurring themes keep their wording.
+  const priorShadow = await loadShadowBuffer(prisma, userId);
+  const heldShadowLabels = priorShadow
+    .filter((s): s is Extract<typeof s, { kind: "node" }> => s.kind === "node")
+    .map((s) => s.label);
+
   const proposerInput: ProposerInput = {
     sources,
     priorNodes,
+    heldShadowLabels,
     ontology,
     policy,
     runId: run.id,
@@ -184,7 +192,6 @@ export async function runExtractionPass(
     const proposerRun = await runProposer(proposerInput, callModel);
 
     const priorGraph = await loadGraphSnapshot(prisma, userId);
-    const priorShadow = await loadShadowBuffer(prisma, userId);
     const gateResult: GateResult = gate(
       proposerRun.output,
       new Map(sources.map((s) => [s.id, s])),
@@ -223,7 +230,13 @@ export async function runExtractionPass(
         (priorSeen.get(s.candidateKey) === undefined ||
           s.timesSeen > (priorSeen.get(s.candidateKey) ?? 0)),
     ).length;
-    const rejectedNodes = gateResult.rejected.filter((r) => r.kind === "node").length;
+    // TRUE rejections only: gateResult.rejected also carries HOLD-reason
+    // entries (the forming set) — counting those double-told the person
+    // their forming candidates were "set aside" (Jacob's walk, 2026-07-15).
+    const HOLDS = new Set(["BELOW_MATERIALIZATION_THRESHOLD", "HELD_HIGH_INFERENCE", "WAITING_ENDPOINT"]);
+    const rejectedNodes = gateResult.rejected.filter(
+      (r) => r.kind === "node" && !HOLDS.has(r.reason),
+    ).length;
 
     // Trigger 1: the pass's newly validated material vs standing hypotheses.
     const matcher = await prisma.$transaction((tx) =>

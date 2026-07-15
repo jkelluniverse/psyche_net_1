@@ -10,6 +10,16 @@ export type GateMode = "SUPERVISED" | "SOLO";
 export interface GateConfig {
   gateVersion: string;
   normalizationVersion: string;
+  /** Candidate identity v2 (the D + scoped-A ruling, 2026-07-15): governs
+   * the SHADOW JOIN only — in-pass dedupe and outcome inheritance are
+   * untouched. Specific known-vocabulary keys join on (type, key); `.core`
+   * fallbacks join only with the label-similarity tiebreak (token Jaccard ≥
+   * coreJoinLabelJaccardMin) AND the evidence-disjointness guard; novel keys
+   * never join on key alone. */
+  candidateIdentity: {
+    identityVersion: string;
+    coreJoinLabelJaccardMin: number;
+  };
   massAlgorithmVersion: string;
   confidenceAlgorithmVersion: string;
   stateAlgorithmVersion: string;
@@ -130,7 +140,11 @@ export interface GateConfig {
 }
 
 export const GATE_CONFIG_V1: GateConfig = {
-  gateVersion: "v1.7",
+  gateVersion: "v1.8", // v1.8 = candidate identity v2 (cross-pass shadow join)
+  candidateIdentity: {
+    identityVersion: "v2",
+    coreJoinLabelJaccardMin: 0.5,
+  },
   normalizationVersion: "v1",
   massAlgorithmVersion: "v1.1",
   confidenceAlgorithmVersion: "v1.1",

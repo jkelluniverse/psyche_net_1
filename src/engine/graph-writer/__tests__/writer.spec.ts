@@ -173,7 +173,7 @@ suite("graph writer — GateResult → Prisma per the v1.6 outcome mapping", () 
     expect(nodes[0].label).toBe("Saying yes when I mean no");
     expect(nodes[0].mass).toBeGreaterThan(0);
     expect(nodes[0].state).toBe("ACTIVE");
-    expect(nodes[0].gateVersion).toBe("v1.7");
+    expect(nodes[0].gateVersion).toBe("v1.8"); // candidate identity v2
     expect(report.nodeIdByTempId["n-accept"]).toBe(nodes[0].id);
 
     // ── Evidence: validated=true, spans slice the source (CHECKs held) ──

@@ -39,6 +39,19 @@ export function buildBlindedContext(input: ProposerInput): BlindedExtractionCont
         label: n.label,
         ...(n.ontologyKey !== undefined ? { ontologyKey: n.ontologyKey } : {}),
       })),
+    // D: once-heard shadow labels — the person's own extracted-lane echoes.
+    // Trimmed, deduplicated, SORTED (input order is not meaning); anything
+    // non-string is a call-site bug and refuses loudly.
+    heldShadowThemes: [
+      ...new Set(
+        (input.heldShadowLabels ?? []).map((l) => {
+          if (typeof l !== "string") {
+            throw new Error("heldShadowLabels must be strings (labels only)");
+          }
+          return l.trim();
+        }).filter((l) => l.length > 0),
+      ),
+    ].sort((a, b) => a.localeCompare(b)),
     ontology: {
       ontologyVersion: input.ontology.ontologyVersion,
       // Forbidden types are ABSENT from the ontology view, not discouraged —
@@ -64,7 +77,14 @@ type Shape = { required: string[]; optional?: string[] };
 
 const SHAPES: Record<string, Shape> = {
   root: {
-    required: ["contractVersion", "sources", "priorExtractedNodes", "ontology", "policy"],
+    required: [
+      "contractVersion",
+      "sources",
+      "priorExtractedNodes",
+      "heldShadowThemes",
+      "ontology",
+      "policy",
+    ],
   },
   source: { required: ["id", "content", "occurredAt"] },
   priorNode: { required: ["id", "type", "label"], optional: ["ontologyKey"] },
@@ -112,6 +132,11 @@ export function serializeExtractionContext(ctx: BlindedExtractionContext): strin
   for (const s of ctx.sources) assertShape(s as unknown as Record<string, unknown>, "source");
   for (const n of ctx.priorExtractedNodes) {
     assertShape(n as unknown as Record<string, unknown>, "priorNode");
+  }
+  for (const t of ctx.heldShadowThemes) {
+    if (typeof t !== "string") {
+      throw new Error("Blinding violation: heldShadowThemes must be plain label strings.");
+    }
   }
   assertShape(ctx.ontology as unknown as Record<string, unknown>, "ontology");
   for (const t of ctx.ontology.nodeTypes) {

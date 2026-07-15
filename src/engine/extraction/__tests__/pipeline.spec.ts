@@ -281,6 +281,47 @@ suite("production pipeline — real wrapper → gate → writer → matcher", ()
     expect(dump).not.toContain("opens up");
   });
 
+
+  it("D ACROSS PASSES: the second pass's prompt carries the first pass's held label, verbatim", async () => {
+    const user = await prisma.user.create({
+      data: { role: "INDIVIDUAL", ageVerified: true },
+    });
+    const content1 = `Entry one. ${QUOTE}.`;
+    const s1 = await prisma.sourceEvent.create({
+      data: {
+        userId: user.id, kind: "JOURNAL_TEXT", content: content1,
+        authorship: "SELF", occurredAt: new Date(NOW.getTime() - 86_400_000),
+      },
+    });
+    const HELD_LABEL = "opens up only when safety comes first";
+    const pass1 = await runExtractionPass(prisma, {
+      userId: user.id, now: NOW, callModel: oracle([s1.id]), model: "oracle",
+    });
+    expect(pass1.ok).toBe(true);
+    if (!pass1.ok) return;
+    expect(pass1.summary.forming).toBe(1); // held, one source
+
+    await prisma.sourceEvent.create({
+      data: {
+        userId: user.id, kind: "JOURNAL_TEXT", content: `Entry two. ${QUOTE}.`,
+        authorship: "SELF", occurredAt: NOW,
+      },
+    });
+    let capturedSystem = "";
+    const spyModel: CallModel = async ({ system }) => {
+      capturedSystem = system;
+      return JSON.stringify({ nodes: [], edges: [] });
+    };
+    await runExtractionPass(prisma, {
+      userId: user.id,
+      now: new Date(NOW.getTime() + 60_000),
+      callModel: spyModel,
+      model: "oracle",
+    });
+    expect(capturedSystem).toContain(HELD_LABEL); // labels only, into the context
+    expect(capturedSystem.toLowerCase()).toContain("never force a fit");
+  });
+
   it("BYTE-IDENTITY: the proposer's serialized context is identical before and after a matcher run", async () => {
     const { userId, sourceIds } = await mkUserWithJournal();
     await importChart(prisma, {

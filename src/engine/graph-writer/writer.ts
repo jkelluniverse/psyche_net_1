@@ -239,17 +239,23 @@ export async function writeGateResult(
     const gateRejectedByTemp = new Map(gr.rejected.map((r) => [r.tempId, r] as const));
     const wrapperByTemp = new Map(input.wrapperRejections.map((r) => [r.tempId, r] as const));
 
-    type Outcome = { outcome: "accepted" | "rejected" | "shadow"; rejectionReason: string | null };
+    type Outcome = {
+      outcome: "accepted" | "rejected" | "shadow";
+      rejectionReason: string | null;
+      rejectionDetail: string | null;
+    };
     const outcomeForTemp = (tempId: string): Outcome | null => {
-      if (acceptedTemp.has(tempId)) return { outcome: "accepted", rejectionReason: null };
+      if (acceptedTemp.has(tempId)) {
+        return { outcome: "accepted", rejectionReason: null, rejectionDetail: null };
+      }
       const gateR = gateRejectedByTemp.get(tempId);
       if (gateR) {
         return HOLD_REASONS.has(gateR.reason)
-          ? { outcome: "shadow", rejectionReason: gateR.reason }
-          : { outcome: "rejected", rejectionReason: gateR.reason };
+          ? { outcome: "shadow", rejectionReason: gateR.reason, rejectionDetail: gateR.detail }
+          : { outcome: "rejected", rejectionReason: gateR.reason, rejectionDetail: gateR.detail };
       }
       const wr = wrapperByTemp.get(tempId);
-      if (wr) return { outcome: "rejected", rejectionReason: wr.reason };
+      if (wr) return { outcome: "rejected", rejectionReason: wr.reason, rejectionDetail: wr.detail };
       return null;
     };
     // In-pass duplicates merge inside the gate under a representative tempId;
@@ -269,6 +275,7 @@ export async function writeGateResult(
         payload: payload as Prisma.InputJsonValue,
         outcome: o.outcome,
         rejectionReason: o.rejectionReason,
+        rejectionDetail: o.rejectionDetail ?? undefined,
       });
       report.proposals[o.outcome]++;
     };
@@ -278,6 +285,7 @@ export async function writeGateResult(
         outcomeByKey.get(`${p.type}::${normalizeQuote(p.label)}`) ?? {
           outcome: "rejected" as const,
           rejectionReason: "UNMAPPED",
+          rejectionDetail: null,
         };
       record("node", p, o);
     }
@@ -285,6 +293,7 @@ export async function writeGateResult(
       const o = outcomeForTemp(p.tempId) ?? {
         outcome: "rejected" as const,
         rejectionReason: "UNMAPPED",
+        rejectionDetail: null,
       };
       record("edge", p, o);
     }
@@ -295,6 +304,7 @@ export async function writeGateResult(
       record(wr.kind, { tempId: wr.tempId, stage: wr.stage, detail: wr.detail }, {
         outcome: "rejected",
         rejectionReason: wr.reason,
+        rejectionDetail: wr.detail,
       });
     }
     if (rows.length > 0) await tx.proposal.createMany({ data: rows });

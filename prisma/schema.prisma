@@ -593,6 +593,10 @@ model Proposal {
   payload        Json          // the raw ProposedNode / ProposedEdge
   outcome        String        // "accepted" | "rejected" | "shadow"
   rejectionReason String?
+  // Migration 9 (telemetry pull-forward): structured failure detail —
+  // per-evidence reasons for gate rejections, wrapper drop detail for
+  // wrapper rejections. Reasons and spans, never retained content.
+  rejectionDetail Json?
   createdAt      DateTime      @default(now())
 
   @@index([runId])
