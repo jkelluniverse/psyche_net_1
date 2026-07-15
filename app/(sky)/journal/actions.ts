@@ -17,7 +17,7 @@ import { getSessionUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { classifyCrisis, type CrisisModelCall } from "@/src/engine/crisis/classifier";
 import { CRISIS_CONFIG_V1 } from "@/src/engine/crisis/config";
-import { runExtractionPass } from "@/src/engine/extraction/run-pass";
+import { runExtractionPass, type ReflectSummary } from "@/src/engine/extraction/run-pass";
 
 export interface JournalFormState {
   saved: boolean;
@@ -102,6 +102,9 @@ export async function saveEntry(
 
 export interface ReflectState {
   error: string | null;
+  /** Zero-change is never a silent outcome: on success the summary ALWAYS
+   * lands, in plain language, before the person goes to the sky. */
+  summary: ReflectSummary | null;
 }
 
 export async function reflectNow(): Promise<ReflectState> {
@@ -115,10 +118,14 @@ export async function reflectNow(): Promise<ReflectState> {
     return {
       error:
         "Reflection couldn't run just now. Your words are safe — try again in a moment.",
+      summary: null,
     };
   }
   if (!result.ok) {
-    return { error: "Nothing new to reflect on yet — write an entry first." };
+    return {
+      error: "Nothing new to reflect on yet — write an entry first.",
+      summary: null,
+    };
   }
-  redirect("/sky");
+  return { error: null, summary: result.summary };
 }

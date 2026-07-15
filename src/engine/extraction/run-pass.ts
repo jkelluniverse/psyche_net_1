@@ -36,6 +36,21 @@ import { runProposer } from "../proposer/proposer";
 import type { CallModel, ProposerInput } from "../proposer/types";
 import { livePolicyFor } from "./live-policy";
 
+export interface ReflectSummary {
+  /** Node-shaped things the gate verified this pass (materialized + forming). */
+  heard: number;
+  /** Now on the sky as stars. */
+  materialized: number;
+  /** Verified but below the recurrence threshold — forming in the fringe. */
+  forming: number;
+  /** Proposed but unverifiable — rejected by the gate, recorded, not shown. */
+  rejected: number;
+  /** Ghosts that moved HYPOTHESIS → ACTIVE this pass. */
+  ghostsCharged: number;
+  /** Evidence links written to standing hypotheses (brightening). */
+  linksCreated: number;
+}
+
 export interface RunPassResult {
   ok: true;
   runId: string;
@@ -44,6 +59,8 @@ export interface RunPassResult {
   /** Sources beyond the per-run cap — deferred, recorded, never silent. */
   sourcesDeferred: number;
   matcher: MatcherRunResult | null;
+  /** Zero-change is never a silent outcome: the summary always lands. */
+  summary: ReflectSummary;
 }
 
 /** The live model caller — throws loudly when the key is absent. */
@@ -196,6 +213,18 @@ export async function runExtractionPass(
       },
     });
 
+    // The plain-language summary (zero-change is never silent): forming =
+    // node-kind shadow entries this pass created or re-sighted, computed
+    // against the PRE-pass buffer.
+    const priorSeen = new Map(priorShadow.map((s) => [s.candidateKey, s.timesSeen]));
+    const forming = gateResult.shadowBuffer.filter(
+      (s) =>
+        s.kind === "node" &&
+        (priorSeen.get(s.candidateKey) === undefined ||
+          s.timesSeen > (priorSeen.get(s.candidateKey) ?? 0)),
+    ).length;
+    const rejectedNodes = gateResult.rejected.filter((r) => r.kind === "node").length;
+
     // Trigger 1: the pass's newly validated material vs standing hypotheses.
     const matcher = await prisma.$transaction((tx) =>
       runMatcherForUser(tx, {
@@ -214,6 +243,16 @@ export async function runExtractionPass(
       sourcesExtracted: sources.length,
       sourcesDeferred: deferred,
       matcher,
+      summary: {
+        heard: gateResult.acceptedNodes.length + forming,
+        materialized: gateResult.acceptedNodes.length,
+        forming,
+        rejected: rejectedNodes,
+        ghostsCharged: matcher.transitions.filter(
+          (t) => t.from === "HYPOTHESIS" && t.to === "ACTIVE",
+        ).length,
+        linksCreated: matcher.linksCreated,
+      },
     };
   } catch (err) {
     // The run row records the failure; sources stay eligible for retry

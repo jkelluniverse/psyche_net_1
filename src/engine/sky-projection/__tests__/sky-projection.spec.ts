@@ -27,10 +27,11 @@ import { describe, expect, it } from "vitest";
 import type { ShadowCandidate } from "@prisma/client";
 import { RENDERER_CONFIG_V1 } from "../renderer-config.v1";
 import { RENDERER_CONFIG_V2 } from "../renderer-config.v2";
+import { RENDERER_CONFIG_V3 } from "../renderer-config.v3";
 
 // The deployed default. Grammar assertions run against it; the canonical
 // snapshot test covers EVERY checked-in config version (spec §2).
-const CONFIG = RENDERER_CONFIG_V2;
+const CONFIG = RENDERER_CONFIG_V3;
 import { brightness } from "../brightness";
 import { PROJECTION_VERSION, skyProjection } from "../sky-projection";
 import type {
@@ -318,6 +319,7 @@ describe("grammar carriers: bands, edges, states, fringe (test 12)", () => {
   it.each([
     ["v1", RENDERER_CONFIG_V1],
     ["v2", RENDERER_CONFIG_V2],
+    ["v3", RENDERER_CONFIG_V3],
   ])("canonical-view snapshot for rendererConfig %s (checked in per version)", (_v, cfg) => {
     const vm = skyProjection(
       [
@@ -375,6 +377,68 @@ describe("grammar carriers: bands, edges, states, fringe (test 12)", () => {
     const earned = project([node({ id: "a-1" })]).nodes[0];
     expect(earned.saturation).toBe(1);
     expect(earned.ghost).toBeNull();
+  });
+});
+
+
+describe("forming points — shadow EXISTENCE renders, content stays held (Jacob's LAW-5 ruling, 2026-07-15)", () => {
+  const forming = [
+    {
+      id: "sc-b",
+      firstSeenAt: new Date("2026-07-15T09:00:00.000Z"),
+      lastSeenAt: new Date("2026-07-15T09:00:00.000Z"),
+      timesSeen: 1,
+    },
+    {
+      id: "sc-a",
+      firstSeenAt: new Date("2026-07-01T09:00:00.000Z"),
+      lastSeenAt: new Date("2026-07-10T09:00:00.000Z"),
+      timesSeen: 2,
+    },
+  ];
+  const projectWithForming = () =>
+    skyProjection([node({ id: "n-1" })], [], NOW, SEED, INDIVIDUAL, CONFIG, [], forming);
+
+  it("enters the view model as its OWN kind: no label claim is even representable", () => {
+    const vm = projectWithForming();
+    expect(vm.forming).toHaveLength(2);
+    expect(vm.forming.map((f) => f.id)).toEqual(["sc-a", "sc-b"]); // canonical order
+    for (const f of vm.forming) {
+      expect("label" in f).toBe(false);
+      expect(f.copy.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("copy: mentioned-once vs recurring, dates formatted, no content anywhere", () => {
+    const vm = projectWithForming();
+    const once = vm.forming.find((f) => f.id === "sc-b")!;
+    expect(once.copy).toContain("once");
+    expect(once.copy).toContain("Jul 15, 2026");
+    const twice = vm.forming.find((f) => f.id === "sc-a")!;
+    expect(twice.copy).toContain("2");
+    expect(twice.copy).toContain("Jul 10, 2026");
+  });
+
+  it("raw shadow rows/contract objects are NOT assignable as forming input (type-level)", () => {
+    const rawShadowRow = {
+      id: "sc-x",
+      candidateKey: "node::pattern::x",
+      label: "the held content that must not render",
+      timesSeen: 1,
+      distinctSources: 1,
+      createdAt: NOW,
+      lastSeen: NOW,
+    };
+    // @ts-expect-error — a shadow row does not fit FormingPointView (field names differ by design)
+    const call = () => skyProjection([], [], NOW, SEED, INDIVIDUAL, CONFIG, [], [rawShadowRow]);
+    void call;
+    expect(true).toBe(true);
+  });
+
+  it("purity holds with forming in play; absent input means empty, never undefined", () => {
+    expect(projectWithForming()).toEqual(projectWithForming());
+    const vm = skyProjection([node({ id: "n-1" })], [], NOW, SEED, INDIVIDUAL, CONFIG);
+    expect(vm.forming).toEqual([]);
   });
 });
 

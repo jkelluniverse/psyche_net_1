@@ -95,6 +95,24 @@ export function ListView({ list }: { list: SkyListModel }) {
         </div>
       )}
 
+      {list.forming.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-sm font-medium uppercase tracking-wide text-ink/60">
+            Forming at the edge
+          </h3>
+          <ul className="mt-2 space-y-2">
+            {list.forming.map((f) => (
+              <li
+                key={f.id}
+                className="rounded-md border border-dashed border-ink/20 px-3 py-2 text-sm text-ink/70"
+              >
+                {f.copy}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p className="mt-10 border-t border-ink/10 pt-4 text-sm italic text-ink/60">
         {list.fringe.copy}
       </p>

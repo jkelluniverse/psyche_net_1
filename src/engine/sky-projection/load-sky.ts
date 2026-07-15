@@ -14,7 +14,7 @@
 //   (isPendingConfirmation) — a second definition here would drift.
 // Conferring is the GATE's isConferring, imported — never restated.
 
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { GATE_CONFIG_V1 } from "../citation-gate/config";
 import { isConferring } from "../citation-gate/mass";
 import { isPendingConfirmation } from "../hypothesis-match/recompute";
@@ -26,6 +26,7 @@ import type {
 } from "../contracts/extraction-contracts";
 import type {
   EffectiveEvidenceView,
+  FormingPointView,
   LensMatchLinkView,
   PersistedEdgeView,
   PersistedNodeView,
@@ -35,6 +36,9 @@ export interface SkyGraph {
   nodes: PersistedNodeView[];
   edges: PersistedEdgeView[];
   matchLinks: LensMatchLinkView[];
+  /** Shadow EXISTENCE only (Jacob's LAW-5 ruling): id + dates + count.
+   * The candidate's content never leaves this loader. */
+  forming: FormingPointView[];
 }
 
 interface JoinedEvidence {
@@ -96,7 +100,7 @@ export async function loadSkyGraph(
   userId: string,
   now: Date = new Date(),
 ): Promise<SkyGraph> {
-  const [nodes, edges, supervised] = await Promise.all([
+  const [nodes, edges, supervised, shadowRows] = await Promise.all([
     prisma.psycheNode.findMany({
       where: { userId, archivedAt: null },
       include: {
@@ -123,6 +127,15 @@ export async function loadSkyGraph(
     prisma.practitionerClient.findFirst({
       where: { clientId: userId },
       select: { id: true },
+    }),
+    // Node-kind shadow candidates (edge candidates carry sourceRef). The
+    // SELECT is the redaction: label/evidenceCache never leave the row.
+    prisma.shadowCandidate.findMany({
+      // AnyNull: node-kind rows store sourceRef as SQL NULL (column omitted
+      // at insert); JSON-null would also mean "not an edge". Both count.
+      where: { userId, sourceRef: { equals: Prisma.AnyNull } },
+      select: { id: true, createdAt: true, lastSeen: true, timesSeen: true },
+      orderBy: { id: "asc" },
     }),
   ]);
   const mode = supervised ? ("SUPERVISED" as const) : ("SOLO" as const);
@@ -205,6 +218,14 @@ export async function loadSkyGraph(
         type: e.type,
         strength: e.strength,
         confidence: e.confidence,
+      }),
+    ),
+    forming: shadowRows.map(
+      (r): FormingPointView => ({
+        id: r.id,
+        firstSeenAt: r.createdAt,
+        lastSeenAt: r.lastSeen,
+        timesSeen: r.timesSeen,
       }),
     ),
     matchLinks: matchLinks.sort(

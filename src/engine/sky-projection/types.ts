@@ -85,6 +85,19 @@ export interface LensMatchLinkView {
   evidenceIds: string[];
 }
 
+/** FORMING POINT (Jacob's LAW-5 ruling, 2026-07-15): shadow EXISTENCE
+ * renders; shadow CONTENT stays held. This view structurally cannot carry a
+ * label or quote — redaction by shape, not discipline. Field names
+ * deliberately differ from ShadowCandidate rows/contract (firstSeenAt /
+ * lastSeenAt vs createdAt / lastSeen), so raw shadow material still does not
+ * fit the projection's inputs. The domain threshold is untouched. */
+export interface FormingPointView {
+  id: string;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  timesSeen: number;
+}
+
 // ── Output (the view model) ──────────────────────────────────────────────────
 //
 // NO COORDINATES ANYWHERE. Force-layout positions are stochastic GPU
@@ -131,6 +144,16 @@ export interface SkyNodeVM {
   pendingConfirmationCopy: string | null;
 }
 
+/** A faint forming point on the unexplored fringe — no label claim. */
+export interface FormingPointVM {
+  id: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  timesSeen: number;
+  /** Config-owned copy: "forming — mentioned once on [date]…" */
+  copy: string;
+}
+
 export interface SkyEdgeVM {
   id: string;
   sourceId: string;
@@ -154,6 +177,8 @@ export interface SkyViewModel {
   nodes: SkyNodeVM[];
   edges: SkyEdgeVM[];
   matchLinks: LensMatchLinkView[];
+  /** Shadow existence in the fringe (LAW 5) — forming, never claiming. */
+  forming: FormingPointVM[];
   /** The edge of the unexplored (LAW 5): honest static affordance. */
   fringe: { copy: string; treatment: string };
 }

@@ -30,6 +30,8 @@ import {
 } from "../../proposer/context";
 import type { CallModel, ProposerInput } from "../../proposer/types";
 import { loadSkyGraph } from "../../sky-projection/load-sky";
+import { skyProjection } from "../../sky-projection/sky-projection";
+import { RENDERER_CONFIG_V3 } from "../../sky-projection/renderer-config.v3";
 import { livePolicyFor } from "../live-policy";
 import { runExtractionPass } from "../run-pass";
 
@@ -229,6 +231,54 @@ suite("production pipeline — real wrapper → gate → writer → matcher", ()
         expect(entry.occurredAt).toBeTruthy(); // temporal honesty: the date rides along
       }
     }
+  });
+
+
+  it("FIRST-ENTRY RESPONSE (kill silent success): one entry → summary lands, forming point visible, content held", async () => {
+    const user = await prisma.user.create({
+      data: { role: "INDIVIDUAL", ageVerified: true },
+    });
+    const content = `Single entry. ${QUOTE}. Never written it down before.`;
+    const src = await prisma.sourceEvent.create({
+      data: {
+        userId: user.id,
+        kind: "JOURNAL_TEXT",
+        content,
+        authorship: "SELF",
+        occurredAt: NOW,
+      },
+    });
+
+    const result = await runExtractionPass(prisma, {
+      userId: user.id,
+      now: NOW,
+      callModel: oracle([src.id]),
+      model: "oracle",
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // The summary ALWAYS lands — zero-materialization is spoken, not silent.
+    expect(result.summary.materialized).toBe(0); // 1 source < the 2-source threshold (untouched)
+    expect(result.summary.forming).toBeGreaterThanOrEqual(1);
+    expect(result.summary.heard).toBe(result.summary.forming);
+
+    // And the SKY responds: the forming point is in the view model…
+    const graph = await loadSkyGraph(prisma, user.id, NOW);
+    expect(graph.nodes.filter((n) => n.provenance === "EXTRACTED")).toHaveLength(0);
+    expect(graph.forming.length).toBeGreaterThanOrEqual(1);
+    expect(graph.forming[0].timesSeen).toBe(1);
+    const vm = skyProjection(
+      graph.nodes, graph.edges, NOW, "seed",
+      { role: "INDIVIDUAL" }, RENDERER_CONFIG_V3, graph.matchLinks, graph.forming,
+    );
+    expect(vm.forming.length).toBeGreaterThanOrEqual(1);
+    expect(vm.forming[0].copy).toContain("once");
+    // …while the held CONTENT appears NOWHERE in the model (redaction by shape).
+    const dump = JSON.stringify(vm);
+    expect(dump).not.toContain(QUOTE);
+    expect(dump).not.toContain("safety");
+    expect(dump).not.toContain("opens up");
   });
 
   it("BYTE-IDENTITY: the proposer's serialized context is identical before and after a matcher run", async () => {

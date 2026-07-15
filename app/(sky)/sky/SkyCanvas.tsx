@@ -23,6 +23,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type {
+  FormingPointVM,
   SkyNodeVM,
   SkyViewModel,
 } from "@/src/engine/sky-projection/types";
@@ -91,15 +92,18 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selected, setSelected] = useState<SkyNodeVM | null>(null);
+  const [selectedForming, setSelectedForming] = useState<FormingPointVM | null>(null);
   const vmRef = useRef(vm);
   vmRef.current = vm;
   const selectedRef = useRef<string | null>(null);
   selectedRef.current = selected?.id ?? null;
+  const selectedFormingRef = useRef<string | null>(null);
+  selectedFormingRef.current = selectedForming?.id ?? null;
 
   useEffect(() => {
     const wrap = wrapRef.current;
     const canvas = canvasRef.current;
-    if (!wrap || !canvas || vm.nodes.length === 0) return;
+    if (!wrap || !canvas || (vm.nodes.length === 0 && vm.forming.length === 0)) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -138,6 +142,19 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
         vy: 0,
         r: n.size * 0.85 + n.brightness * 2.5, // mass sets the body; light breathes on top
         phase: (i * 137) % 100,
+      });
+    });
+
+    // Forming points live on an outer fringe ring — rendering-only positions,
+    // seeded per id so they hold still between sessions.
+    const formingSims = new Map<string, { x: number; y: number; phase: number }>();
+    vm.forming.forEach((f, i) => {
+      const angle = (i / Math.max(1, vm.forming.length)) * Math.PI * 2 + rng() * 0.5;
+      const ringR = Math.min(W(), H()) * 0.42;
+      formingSims.set(f.id, {
+        x: W() / 2 + Math.cos(angle) * ringR,
+        y: H() / 2 + Math.sin(angle) * ringR * 0.9,
+        phase: (i * 53) % 100,
       });
     });
 
@@ -232,6 +249,27 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
         ctx!.stroke();
         ctx!.setLineDash([]);
       }
+
+      // Forming embers first — beneath everything, at the edge (LAW 5:
+      // something is here, unformed; no label, no body, no claim).
+      const fcfg = vmRef.current; // alpha/radius come from the VM's config era
+      for (const f of vmRef.current.forming) {
+        const fs = formingSims.get(f.id);
+        if (!fs) continue;
+        const pulse = reduceMotion ? 1 : 0.75 + 0.25 * Math.sin(tick / 70 + fs.phase);
+        ctx!.fillStyle = `${CREAM}${(0.5 * pulse).toFixed(2)})`;
+        ctx!.beginPath();
+        ctx!.arc(fs.x, fs.y, 3, 0, Math.PI * 2);
+        ctx!.fill();
+        if (selectedFormingRef.current === f.id) {
+          ctx!.strokeStyle = `${CREAM}0.8)`;
+          ctx!.lineWidth = 1;
+          ctx!.beginPath();
+          ctx!.arc(fs.x, fs.y, 7, 0, Math.PI * 2);
+          ctx!.stroke();
+        }
+      }
+      void fcfg;
 
       for (const n of nodes) {
         const s = sims.get(n.id);
@@ -369,12 +407,25 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
         canvas!.style.cursor = hover ? "pointer" : "grab";
       }
     }
+    const hitForming = (cx: number, cy: number): string | null => {
+      const pnt = toWorld(cx, cy);
+      for (const f of vmRef.current.forming) {
+        const fs = formingSims.get(f.id);
+        if (fs && Math.hypot(pnt.x - fs.x, pnt.y - fs.y) < 12) return f.id;
+      }
+      return null;
+    };
+
     function onPointerUp(e: PointerEvent) {
       const moved = Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6;
       if (drag.id && !moved) {
         const node = vmRef.current.nodes.find((n) => n.id === drag.id) ?? null;
         setSelected(node);
+        setSelectedForming(null);
       } else if (!drag.id && !moved) {
+        const formingId = hitForming(e.clientX, e.clientY);
+        const forming = vmRef.current.forming.find((f) => f.id === formingId) ?? null;
+        setSelectedForming(forming);
         setSelected(null);
       }
       drag.id = null;
@@ -438,7 +489,7 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
     // The sim rebuilds only when the view model identity changes.
   }, [vm]);
 
-  if (vm.nodes.length === 0) return null;
+  if (vm.nodes.length === 0 && vm.forming.length === 0) return null;
 
   return (
     <div className="relative">
@@ -461,6 +512,25 @@ export function SkyCanvas({ vm }: { vm: SkyViewModel }) {
           {vm.fringe.copy}
         </p>
       </div>
+      {selectedForming && !selected && (
+        <div
+          className="absolute bottom-3 left-3 right-3 max-w-md rounded-md border border-ink/15 bg-canvas/95 p-4 shadow-lg"
+          role="dialog"
+          aria-label="Forming point"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-ink/85">{selectedForming.copy}</p>
+            <button
+              type="button"
+              onClick={() => setSelectedForming(null)}
+              className="text-sm text-ink/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-wine"
+              aria-label="Close details"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       {selected && (
         <div
           className="absolute bottom-3 left-3 right-3 max-w-md rounded-md border border-ink/15 bg-canvas/95 p-4 shadow-lg"

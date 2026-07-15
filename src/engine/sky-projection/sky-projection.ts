@@ -17,6 +17,8 @@ import type { RendererConfig } from "./renderer-config.v1";
 import type {
   ConfidenceBand,
   EffectiveEvidenceView,
+  FormingPointVM,
+  FormingPointView,
   LensMatchLinkView,
   PersistedEdgeView,
   PersistedNodeView,
@@ -56,6 +58,7 @@ export function skyProjection(
   viewer: ViewerContext,
   config: RendererConfig,
   matchLinks: readonly LensMatchLinkView[] = [],
+  forming: readonly FormingPointView[] = [],
 ): SkyViewModel {
   return {
     projectionVersion: PROJECTION_VERSION,
@@ -71,7 +74,44 @@ export function skyProjection(
           (a.lensNodeId < b.lensNodeId ? -1 : a.lensNodeId > b.lensNodeId ? 1 : 0) ||
           (a.extractedNodeId < b.extractedNodeId ? -1 : a.extractedNodeId > b.extractedNodeId ? 1 : 0),
       ),
+    forming: [...forming].sort(byId).map((f) => projectForming(f, config)),
     fringe: { copy: config.fringe.copy, treatment: config.fringe.treatment },
+  };
+}
+
+// Deterministic date copy: fixed locale + UTC — no ambient environment.
+const FORMING_DATE = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+/** Shadow EXISTENCE renders; content is structurally absent from the input
+ * (FormingPointView has no label field to leak). The copy makes no claim
+ * about WHAT is forming — only that something was heard, and when. */
+function projectForming(
+  f: FormingPointView,
+  config: RendererConfig,
+): FormingPointVM {
+  const once =
+    config.forming?.copyOnce ??
+    "Forming — you mentioned this once, on {date}. It will take shape on your sky if it comes up again.";
+  const recurring =
+    config.forming?.copyRecurring ??
+    "Forming — mentioned {count} times, most recently on {date}. Still taking shape.";
+  const copy =
+    f.timesSeen <= 1
+      ? once.replace("{date}", FORMING_DATE.format(f.firstSeenAt))
+      : recurring
+          .replace("{count}", String(f.timesSeen))
+          .replace("{date}", FORMING_DATE.format(f.lastSeenAt));
+  return {
+    id: f.id,
+    firstSeenAt: f.firstSeenAt.toISOString(),
+    lastSeenAt: f.lastSeenAt.toISOString(),
+    timesSeen: f.timesSeen,
+    copy,
   };
 }
 

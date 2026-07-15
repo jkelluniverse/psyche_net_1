@@ -10,6 +10,7 @@
 
 import type {
   ConfidenceBand,
+  FormingPointVM,
   SkyEdgeVM,
   SkyNodeVM,
   SkyViewModel,
@@ -60,6 +61,8 @@ export interface SkyListModel {
   rendererConfigVersion: string;
   nodeGroups: ListNodeGroup[];
   edgeGroups: ListEdgeGroup[];
+  /** Parity with the canvas fringe: same forming points, same copy. */
+  forming: FormingPointVM[];
   fringe: { copy: string; treatment: string };
 }
 
@@ -98,6 +101,7 @@ export function listModel(vm: SkyViewModel): SkyListModel {
     edgeGroups: [...edgeGroups.values()]
       .map((g) => ({ ...g, entries: [...g.entries].sort((a, b) => cmp(a.id, b.id)) }))
       .sort((a, b) => cmp(a.type, b.type)),
+    forming: vm.forming,
     fringe: vm.fringe,
   };
 }

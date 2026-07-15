@@ -12,12 +12,48 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
+import Link from "next/link";
 import {
   reflectNow,
   saveEntry,
   type JournalFormState,
   type ReflectState,
 } from "./actions";
+import type { ReflectSummary } from "@/src/engine/extraction/run-pass";
+
+/** Jacob's plain-language contract: "I heard N things in your words. M are
+ * now on your sky. K are forming — they'll appear when they come up again." */
+function summarySentences(s: ReflectSummary): string[] {
+  const lines: string[] = [];
+  lines.push(
+    s.heard === 0
+      ? "I listened, and nothing in these words asked to become part of your sky yet."
+      : `I heard ${s.heard} thing${s.heard === 1 ? "" : "s"} in your words.`,
+  );
+  if (s.materialized > 0) {
+    lines.push(
+      `${s.materialized} ${s.materialized === 1 ? "is" : "are"} now on your sky.`,
+    );
+  }
+  if (s.forming > 0) {
+    lines.push(
+      `${s.forming} ${s.forming === 1 ? "is" : "are"} forming — you'll see ${s.forming === 1 ? "it" : "them"} as faint points at the edge, and ${s.forming === 1 ? "it" : "they"}'ll take shape when ${s.forming === 1 ? "it comes" : "they come"} up again.`,
+    );
+  }
+  if (s.ghostsCharged > 0) {
+    lines.push(
+      `${s.ghostsCharged} chart hypothesis${s.ghostsCharged === 1 ? "" : "es"} lit up — your own words just confirmed ${s.ghostsCharged === 1 ? "it" : "them"}.`,
+    );
+  } else if (s.linksCreated > 0) {
+    lines.push("Some of your words reached a standing hypothesis — it brightened.");
+  }
+  if (s.rejected > 0) {
+    lines.push(
+      `${s.rejected} reading${s.rejected === 1 ? "" : "s"} couldn't be verified against your exact words and ${s.rejected === 1 ? "was" : "were"} set aside.`,
+    );
+  }
+  return lines;
+}
 
 const INITIAL: JournalFormState = { saved: false, error: null, crisis: null };
 
@@ -38,6 +74,7 @@ export function JournalForm({ pendingCount }: { pendingCount: number }) {
   const router = useRouter();
   const [state, formAction] = useFormState(saveEntry, INITIAL);
   const [reflectError, setReflectError] = useState<string | null>(null);
+  const [reflectSummary, setReflectSummary] = useState<ReflectSummary | null>(null);
   const [reflecting, setReflecting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -138,10 +175,12 @@ export function JournalForm({ pendingCount }: { pendingCount: number }) {
           onClick={async () => {
             setReflecting(true);
             setReflectError(null);
+            setReflectSummary(null);
             const result: ReflectState = await reflectNow();
-            // On success the action redirects to /sky; reaching here means it didn't.
-            setReflectError(result?.error ?? null);
+            setReflectError(result.error);
+            setReflectSummary(result.summary);
             setReflecting(false);
+            router.refresh(); // the waiting-count and recent list update
           }}
           className="mt-3 rounded-md border border-wine/40 px-5 py-2.5 text-sm font-medium text-wine transition-colors hover:bg-wine/5 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine"
         >
@@ -155,6 +194,25 @@ export function JournalForm({ pendingCount }: { pendingCount: number }) {
           <p role="alert" className="mt-2 text-sm text-wine">
             {reflectError}
           </p>
+        )}
+        {reflectSummary && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-3 rounded-md border border-ink/15 bg-canvas p-3"
+          >
+            {summarySentences(reflectSummary).map((line) => (
+              <p key={line} className="text-sm leading-relaxed text-ink/85">
+                {line}
+              </p>
+            ))}
+            <Link
+              href="/sky"
+              className="mt-3 inline-block rounded-md bg-wine px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-wine-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine"
+            >
+              See your sky
+            </Link>
+          </div>
         )}
       </section>
     </div>

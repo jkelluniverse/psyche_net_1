@@ -12,7 +12,7 @@ import { loadSkyGraph } from "@/src/engine/sky-projection/load-sky";
 import { skyProjection } from "@/src/engine/sky-projection/sky-projection";
 import { listModel } from "@/src/engine/sky-projection/list-model";
 import { stableSeed } from "@/src/engine/sky-projection/seed";
-import { RENDERER_CONFIG_V2 } from "@/src/engine/sky-projection/renderer-config.v2";
+import { RENDERER_CONFIG_V3 } from "@/src/engine/sky-projection/renderer-config.v3";
 import { Eyebrow, SignatureRule } from "@/components/brand";
 import { SkyCanvas } from "./SkyCanvas";
 import { ListView } from "./ListView";
@@ -31,8 +31,9 @@ export default async function SkyPage() {
     now,
     stableSeed(user.id),
     { role: "INDIVIDUAL" },
-    RENDERER_CONFIG_V2,
+    RENDERER_CONFIG_V3,
     graph.matchLinks,
+    graph.forming,
   );
   const list = listModel(vm);
 
@@ -43,7 +44,7 @@ export default async function SkyPage() {
         <SignatureRule />
       </div>
 
-      {vm.nodes.length === 0 ? (
+      {vm.nodes.length === 0 && vm.forming.length === 0 ? (
         <div className="mx-auto mt-16 max-w-md text-center">
           <p className="text-lg">Your sky is still dark.</p>
           <p className="mt-2 text-sm text-ink/70">

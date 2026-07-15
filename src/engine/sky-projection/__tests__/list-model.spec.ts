@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from "vitest";
 import { RENDERER_CONFIG_V2 } from "../renderer-config.v2";
+import { RENDERER_CONFIG_V3 } from "../renderer-config.v3";
 import { skyProjection } from "../sky-projection";
 import { listModel } from "../list-model";
 import type { PersistedEdgeView, PersistedNodeView } from "../types";
@@ -166,5 +167,29 @@ describe("listModel — content parity with the (veiled) view model", () => {
   it("carries the fringe (LAW 5 — the list is never falsely complete either)", () => {
     const list = listModel(vmOf());
     expect(list.fringe.copy).toBe(RENDERER_CONFIG_V2.fringe.copy);
+  });
+
+  it("FORMING PARITY: the list carries the same forming points, same copy, no label anywhere", () => {
+    const vm = skyProjection(
+      FIXTURE_NODES,
+      FIXTURE_EDGES,
+      NOW,
+      "seed",
+      { role: "INDIVIDUAL" },
+      RENDERER_CONFIG_V3,
+      [],
+      [
+        {
+          id: "sc-1",
+          firstSeenAt: new Date("2026-07-15T09:00:00.000Z"),
+          lastSeenAt: new Date("2026-07-15T09:00:00.000Z"),
+          timesSeen: 1,
+        },
+      ],
+    );
+    const list = listModel(vm);
+    expect(list.forming).toEqual(vm.forming); // byte-parity with the canvas model
+    expect(list.forming[0].copy).toContain("once");
+    expect("label" in list.forming[0]).toBe(false);
   });
 });

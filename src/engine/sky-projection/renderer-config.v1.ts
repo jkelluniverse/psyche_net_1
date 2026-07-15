@@ -67,6 +67,14 @@ export interface RendererConfig {
   /** SUPERVISED pending-confirmation copy (test 14). Optional: v1 predates
    * the confirmation carrier; v2 carries it. */
   pendingConfirmationCopy?: string;
+  /** Forming-point grammar (Jacob's LAW-5 ruling, 2026-07-15). Optional:
+   * v1/v2 predate it; v3 carries it. {date}/{count} are template slots. */
+  forming?: {
+    radius: number;
+    alpha: number;
+    copyOnce: string;
+    copyRecurring: string;
+  };
   /** Checkpoint rule: ghost labels from an unblessed (draft) lens map carry
    * this suffix on every surface. Removed only by the map version flipping
    * to canon — never by a renderer opting out. */
