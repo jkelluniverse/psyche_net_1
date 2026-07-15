@@ -1,0 +1,157 @@
+{
+  "classifierVersion": "v1",
+  "model": "claude-haiku-4-5-20251001",
+  "total": 21,
+  "passed": 18,
+  "rate": 0.8571428571428571,
+  "missedCrisis": [],
+  "rows": [
+    {
+      "id": "hard-01",
+      "expected": "CRISIS",
+      "got": "CRISIS",
+      "ok": true,
+      "method": "LEXICON"
+    },
+    {
+      "id": "hard-02",
+      "expected": "CRISIS",
+      "got": "CRISIS",
+      "ok": true,
+      "method": "LEXICON"
+    },
+    {
+      "id": "hard-03",
+      "expected": "CRISIS",
+      "got": "CRISIS",
+      "ok": true,
+      "method": "LEXICON"
+    },
+    {
+      "id": "hard-04",
+      "expected": "CRISIS",
+      "got": "CRISIS",
+      "ok": true,
+      "method": "LEXICON"
+    },
+    {
+      "id": "hard-05",
+      "expected": "CRISIS",
+      "got": "CRISIS",
+      "ok": true,
+      "method": "LEXICON"
+    },
+    {
+      "id": "hard-06",
+      "expected": "CRISIS",
+      "got": "CRISIS",
+      "ok": true,
+      "method": "LEXICON"
+    },
+    {
+      "id": "hard-07",
+      "expected": "CRISIS",
+      "got": "CRISIS",
+      "ok": true,
+      "method": "LEXICON"
+    },
+    {
+      "id": "hard-08",
+      "expected": "CRISIS",
+      "got": "CRISIS",
+      "ok": true,
+      "method": "LEXICON"
+    },
+    {
+      "id": "neg-01",
+      "expected": "NONE",
+      "got": "NONE",
+      "ok": true,
+      "method": "MODEL"
+    },
+    {
+      "id": "neg-02",
+      "expected": "NONE",
+      "got": "NONE",
+      "ok": true,
+      "method": "MODEL"
+    },
+    {
+      "id": "neg-03",
+      "expected": "NONE",
+      "got": "NONE",
+      "ok": true,
+      "method": "MODEL"
+    },
+    {
+      "id": "neg-04",
+      "expected": "NONE",
+      "got": "NONE",
+      "ok": true,
+      "method": "MODEL"
+    },
+    {
+      "id": "neg-05",
+      "expected": "NONE",
+      "got": "NONE",
+      "ok": true,
+      "method": "MODEL"
+    },
+    {
+      "id": "neg-06",
+      "expected": "NONE",
+      "got": "NONE",
+      "ok": true,
+      "method": "MODEL"
+    },
+    {
+      "id": "soft-01",
+      "expected": "CRISIS",
+      "got": "CONCERN",
+      "ok": false,
+      "method": "LEXICON+MODEL"
+    },
+    {
+      "id": "soft-02",
+      "expected": "NONE",
+      "got": "NONE",
+      "ok": true,
+      "method": "LEXICON+MODEL"
+    },
+    {
+      "id": "soft-03",
+      "expected": "CONCERN",
+      "got": "NONE",
+      "ok": false,
+      "method": "LEXICON+MODEL"
+    },
+    {
+      "id": "soft-04",
+      "expected": "NONE",
+      "got": "NONE",
+      "ok": true,
+      "method": "LEXICON+MODEL"
+    },
+    {
+      "id": "model-01",
+      "expected": "CONCERN",
+      "got": "CONCERN",
+      "ok": true,
+      "method": "MODEL"
+    },
+    {
+      "id": "model-02",
+      "expected": "CONCERN",
+      "got": "CONCERN",
+      "ok": true,
+      "method": "MODEL"
+    },
+    {
+      "id": "recovery-01",
+      "expected": "CONCERN",
+      "got": "NONE",
+      "ok": false,
+      "method": "MODEL"
+    }
+  ]
+}
