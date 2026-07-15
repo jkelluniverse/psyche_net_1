@@ -1,11 +1,14 @@
-// JOURNAL — auth-gated entry surface. Recent entries render as a quiet
-// list (dates + first line, the person's own words); the form and the
-// crisis-resource panel live in the client component.
+// JOURNAL — auth-gated entry surface. The waiting-for-reflection count is
+// computed by the SAME watermark the extraction pass uses (imported, never
+// restated), so what the button promises is exactly what the pass reads.
+// Recent entries expand in place to their full text (details/summary —
+// keyboard-reachable, no JS).
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
+import { countUnextractedSources } from "@/src/engine/extraction/run-pass";
 import { Eyebrow, SignatureRule } from "@/components/brand";
 import { JournalForm } from "./JournalForm";
 
@@ -21,17 +24,20 @@ export default async function JournalPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const recent = await prisma.sourceEvent.findMany({
-    where: {
-      userId: user.id,
-      kind: "JOURNAL_TEXT",
-      authorship: "SELF",
-      invalidatedAt: null,
-    },
-    orderBy: { occurredAt: "desc" },
-    take: 10,
-    select: { id: true, content: true, occurredAt: true },
-  });
+  const [recent, pendingCount] = await Promise.all([
+    prisma.sourceEvent.findMany({
+      where: {
+        userId: user.id,
+        kind: "JOURNAL_TEXT",
+        authorship: "SELF",
+        invalidatedAt: null,
+      },
+      orderBy: { occurredAt: "desc" },
+      take: 10,
+      select: { id: true, content: true, occurredAt: true },
+    }),
+    countUnextractedSources(prisma, user.id),
+  ]);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-6 py-10">
@@ -42,7 +48,7 @@ export default async function JournalPage() {
       </div>
 
       <div className="mt-8">
-        <JournalForm />
+        <JournalForm pendingCount={pendingCount} />
       </div>
 
       <div className="mt-6 text-center">
@@ -61,9 +67,25 @@ export default async function JournalPage() {
           </h2>
           <ul className="mt-3 space-y-3">
             {recent.map((e) => (
-              <li key={e.id} className="rounded-md border border-ink/10 px-3 py-2">
-                <p className="text-xs text-ink/50">{dateFmt.format(e.occurredAt)}</p>
-                <p className="mt-1 line-clamp-2 text-sm text-ink/80">{e.content}</p>
+              <li key={e.id}>
+                <details className="group rounded-md border border-ink/10 px-3 py-2">
+                  <summary className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine">
+                    <span className="text-xs text-ink/50">
+                      {dateFmt.format(e.occurredAt)}
+                    </span>
+                    <span className="mt-1 block text-sm text-ink/80 group-open:hidden">
+                      {e.content.length > 140
+                        ? `${e.content.slice(0, 140)}…`
+                        : e.content}
+                    </span>
+                    <span className="mt-1 hidden text-xs text-ink/50 group-open:block">
+                      tap to fold
+                    </span>
+                  </summary>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink/90">
+                    {e.content}
+                  </p>
+                </details>
               </li>
             ))}
           </ul>

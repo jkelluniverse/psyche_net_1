@@ -92,6 +92,15 @@ async function loadUnextractedSources(
   }));
 }
 
+/** How many saved entries the next pass will read — the journal surfaces
+ * this so "Reflect now" visibly operates on SAVED entries, not the form. */
+export async function countUnextractedSources(
+  prisma: PrismaClient,
+  userId: string,
+): Promise<number> {
+  return (await loadUnextractedSources(prisma, userId)).length;
+}
+
 export async function runExtractionPass(
   prisma: PrismaClient,
   input: {

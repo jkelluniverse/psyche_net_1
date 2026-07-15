@@ -1,12 +1,16 @@
 "use client";
 
 // JOURNAL FORM — the words' front door, kept quiet and unhurried.
-// No streaks, no prompts to disclose more, no depth scoring (LAW 6) — a
-// textarea, a save, and the calm crisis-resource panel when the classifier
-// asks for it. "Reflect now" triggers the batched extraction pass
-// deliberately (demo affordance; extraction is async by design).
+// No streaks, no prompts to disclose more, no depth scoring (LAW 6).
+//
+// Two clearly separate acts (Jacob's phone walk caught these read as one):
+// 1. SAVE keeps the entry — and the page refreshes so it appears below.
+// 2. REFLECT is its own section: it reads SAVED entries into the sky (the
+//    count comes from the server watermark, so it visibly operates on what
+//    is already kept — never on the textarea, never needing a retype).
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import {
   reflectNow,
@@ -30,43 +34,25 @@ function SaveButton() {
   );
 }
 
-function ReflectButton({ onError }: { onError: (msg: string | null) => void }) {
-  const [running, setRunning] = useState(false);
-  return (
-    <button
-      type="button"
-      disabled={running}
-      onClick={async () => {
-        setRunning(true);
-        onError(null);
-        const result: ReflectState = await reflectNow();
-        // On success the action redirects to /sky; reaching here means it didn't.
-        onError(result?.error ?? null);
-        setRunning(false);
-      }}
-      className="rounded-md border border-wine/40 px-5 py-2.5 text-sm font-medium text-wine transition-colors hover:bg-wine/5 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine"
-    >
-      {running ? "Reading your words…" : "Reflect now"}
-    </button>
-  );
-}
-
-export function JournalForm() {
+export function JournalForm({ pendingCount }: { pendingCount: number }) {
+  const router = useRouter();
   const [state, formAction] = useFormState(saveEntry, INITIAL);
   const [reflectError, setReflectError] = useState<string | null>(null);
+  const [reflecting, setReflecting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // A successful save re-renders the server bits (recent list + the
+  // waiting-count) so the page always tells the truth about what's kept.
+  useEffect(() => {
+    if (state.saved) {
+      formRef.current?.reset();
+      router.refresh();
+    }
+  }, [state, router]);
 
   return (
     <div className="flex flex-col gap-4">
-      <form
-        ref={formRef}
-        action={async (fd) => {
-          formAction(fd);
-          // Clear only after a submit attempt; the action re-renders state.
-          formRef.current?.reset();
-        }}
-        className="flex flex-col gap-3"
-      >
+      <form ref={formRef} action={formAction} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-ink/70">
             What&apos;s here today? Your words stay yours — nothing becomes part
@@ -80,9 +66,8 @@ export function JournalForm() {
             placeholder="Write freely…"
           />
         </label>
-        <div className="flex items-center gap-3">
+        <div>
           <SaveButton />
-          <ReflectButton onError={setReflectError} />
         </div>
       </form>
 
@@ -91,15 +76,10 @@ export function JournalForm() {
           {state.error}
         </p>
       )}
-      {reflectError && (
-        <p role="alert" className="text-sm text-wine">
-          {reflectError}
-        </p>
-      )}
       {state.saved && !state.crisis && (
-        <p className="text-sm text-ink/70">
-          Kept. When you&apos;re ready, &ldquo;Reflect now&rdquo; reads your
-          recent entries into the sky.
+        <p className="text-sm text-ink/70" role="status">
+          Kept — it&apos;s saved below and waiting for reflection. Nothing to
+          retype.
         </p>
       )}
 
@@ -140,6 +120,43 @@ export function JournalForm() {
           </p>
         </aside>
       )}
+
+      {/* ── Reflection: its own act, on SAVED entries ─────────────────── */}
+      <section
+        aria-label="Reflection"
+        className="mt-2 rounded-lg border border-ink/10 bg-ink/[0.03] p-4"
+      >
+        <h2 className="text-sm font-semibold text-ink">Reflection</h2>
+        <p className="mt-1 text-sm text-ink/70">
+          {pendingCount === 0
+            ? "Every saved entry has been reflected into your sky. Write something new, save it, and reflect again."
+            : `${pendingCount} saved ${pendingCount === 1 ? "entry is" : "entries are"} waiting. Reflection reads them into your sky — your exact words become the evidence.`}
+        </p>
+        <button
+          type="button"
+          disabled={reflecting || pendingCount === 0}
+          onClick={async () => {
+            setReflecting(true);
+            setReflectError(null);
+            const result: ReflectState = await reflectNow();
+            // On success the action redirects to /sky; reaching here means it didn't.
+            setReflectError(result?.error ?? null);
+            setReflecting(false);
+          }}
+          className="mt-3 rounded-md border border-wine/40 px-5 py-2.5 text-sm font-medium text-wine transition-colors hover:bg-wine/5 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wine"
+        >
+          {reflecting
+            ? "Reading your words…"
+            : pendingCount === 0
+              ? "Nothing waiting to reflect"
+              : `Reflect ${pendingCount === 1 ? "this entry" : `these ${pendingCount} entries`} into my sky`}
+        </button>
+        {reflectError && (
+          <p role="alert" className="mt-2 text-sm text-wine">
+            {reflectError}
+          </p>
+        )}
+      </section>
     </div>
   );
 }
