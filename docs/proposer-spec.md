@@ -1,6 +1,8 @@
 # Extraction Proposer — Module Specification
 
-*Psyche-Net · the adversarially-exposed front-end · **v1.4-FINAL** · governs `/src/engine/proposer/`*
+*Psyche-Net · the adversarially-exposed front-end · **v1.5-FINAL** · governs `/src/engine/proposer/`*
+
+> **v1.5 changelog (doc-sync — the FINAL-drift amendment's founding precedent):** the candidate-identity ruling (IDEA-021, 2026-07-15) shipped `ProposerInput.heldShadowLabels` → `BlindedExtractionContext.heldShadowThemes` (prompt v4) into the code without this spec gaining the field; the intake round-1 cross-model review caught the drift (ChatGPT C-1) — a contract-doc seam this spec's own loop exists to kill, owned here. Documented now, ZERO behavior change: the proposer may see the person's own once-heard shadow-candidate **labels** (Jacob's canonical blinding analysis: shadow candidates are extracted-lane echoes — the honest edge already admits the earned graph, and once-heard material is the same category one step earlier; not a hypothesis, no blinding violation). LABELS ONLY — no counts, no dates, no evidence — rendered under the ruled instruction "reuse the exact label only if the theme genuinely recurs; never force a fit." Structural carriers, all pre-existing: the serializer allowlist + byte-identity tests (`held-shadow.spec.ts`), the D-across-passes pipeline test, and the anchoring canary (`scripts/anchoring-canary.ts`, permanent in the eval set: held labels + an unrelated flat entry → zero forced reuse). The v1.4 exit stamp carries forward — doc-sync only, no new review round.
 
 > **v1.4-FINAL (exit stamp):** targeted diff verification of the D8/D9 integration (charter post-escalation exit) returned PASS with zero Criticals — full conferring matrix hand-traced; blinding, WAITING_ENDPOINT carriage, and both pipeline keystones verified. Its one MAJOR is integrated pre-stamp: the conferring rule is an ALLOWLIST (`SUPPORT | ENACTMENT`), not a denylist, so unknown/corrupted role values default to non-conferring — fail-closed at the trust boundary, behavior-identical over the closed enum, pinned by test. Three rounds + escalation + diff verification: this spec is build-cleared.
 >
@@ -55,6 +57,9 @@ The governing division of labor (META-01, LAW 2): **the proposer is optimized fo
 interface ProposerInput {
   sources: SourceRecord[];              // SELF-authored only; data, never instructions (§4)
   priorExtractedNodes: PriorNodeView[]; // EXTRACTED-provenance only; see §5 for what this does and doesn't mean
+  heldShadowLabels?: string[];          // v1.5 (IDEA-021 doc-sync): once-heard shadow-candidate LABELS, extracted-lane
+                                        // echoes only — never counts/dates/evidence, never hypothesis material.
+                                        // Serializer-allowlisted as heldShadowThemes; guarded by the anchoring canary.
   ontology: OntologyView;               // closed NodeType enum + known ontologyKeys + short definitions
   policy: ExtractionPolicy;             // SERVER-DERIVED, never client-supplied (§7)
   runId: string;                        // ties proposals to an ExtractionRun (audit)
