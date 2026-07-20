@@ -10,10 +10,19 @@ if (!process.env.OPENAI_API_KEY) { console.error("OPENAI_API_KEY not set — cro
 
 const reviewerPrompt = readFileSync("docs/review/spec-reviewer-prompt.md", "utf8");
 const spec = readFileSync(specPath, "utf8");
-// Cross-references the reviewer needs for seam checks (keep in sync with the loop command):
-const xrefs = ["CLAUDE.md", "docs/citation-gate-spec.md", "docs/psyche-net-master-concept.md", "prisma/schema.prisma", "src/engine/contracts/extraction-contracts.ts"]
+// Cross-references the reviewer needs for seam checks (keep in sync with the loop command).
+// Per-spec override: REVIEW_XREFS="path1,path2" (each spec header lists its own set).
+const xrefPaths = process.env.REVIEW_XREFS
+  ? process.env.REVIEW_XREFS.split(",").map(s => s.trim()).filter(Boolean)
+  : ["CLAUDE.md", "docs/citation-gate-spec.md", "docs/psyche-net-master-concept.md", "prisma/schema.prisma", "src/engine/contracts/extraction-contracts.ts"];
+const xrefs = xrefPaths
   .map(p => { try { return `\n\n===== CROSS-REFERENCE: ${p} =====\n` + readFileSync(p, "utf8"); } catch { return ""; } })
   .join("");
+// Optional orchestrator notes (scope rulings from the product owner) — identical
+// text goes to BOTH review lanes; never silently divergent instructions.
+const notes = process.env.REVIEW_NOTES_FILE
+  ? `\n\n===== ORCHESTRATOR NOTES (binding scope rulings for this round) =====\n` + readFileSync(process.env.REVIEW_NOTES_FILE, "utf8")
+  : "";
 
 const res = await fetch("https://api.openai.com/v1/chat/completions", {
   method: "POST",
@@ -22,7 +31,7 @@ const res = await fetch("https://api.openai.com/v1/chat/completions", {
     model: process.env.OPENAI_REVIEW_MODEL || "gpt-5",
     messages: [
       { role: "system", content: reviewerPrompt },
-      { role: "user", content: `Review the following specification (round ${round}). State the exact version you reviewed.\n\n===== SPEC UNDER REVIEW: ${basename(specPath)} =====\n${spec}${xrefs}` },
+      { role: "user", content: `Review the following specification (round ${round}). State the exact version you reviewed.\n\n===== SPEC UNDER REVIEW: ${basename(specPath)} =====\n${spec}${notes}${xrefs}` },
     ],
   }),
 });

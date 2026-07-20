@@ -2,6 +2,8 @@
 
 *Psyche-Net · the first ten minutes · v1.0 · governs `/src/app/(intake)/`, `/src/engine/intake/` · for REVIEW-01 iteration*
 
+> **v1.0 changelog:** initial draft (INTAKE-01 realized) — enters the REVIEW-01 loop. No review rounds integrated yet.
+
 > INTAKE-01 realized: the Tier-1 guided intake that turns a stranger into a person with a sky, in ~10 minutes, on their own phone. This is the September demo itself. Governing rule (master concept §5.1): **each answer renders its consequence before the next question is asked** — intake is the tutorial for the core loop, not a form. Everything here orchestrates the EXISTING pipeline (SourceEvent → crisis floor → proposer → gate → writer → matcher → sky); the module adds sequencing, prompts, voice, and pacing — no new trust machinery. Cross-refs: master concept §5.1/§7, proposer spec v1.4-FINAL, renderer-lens v1.3-FINAL, CLAUDE.md.
 
 ## 1. The flow
