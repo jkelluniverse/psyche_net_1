@@ -20,13 +20,15 @@ This charter encodes the judgment used to reconcile dual-model spec reviews. The
 **DEFER-TO-BUNDLE (log verbatim in master concept §7.1 pre-pilot governance bundle; do NOT edit build specs):**
 - Any finding whose harm requires REAL USERS to manifest: eligibility models, claims lexicons, boundary docs, threat-model documents, provider data-handling contracts, deletion architecture, privacy threat models, multilingual policy, batching schemas beyond v1 minimal. Test: "does this block building the module, or block piloting the product?" If pilot → bundle.
 
+**BUILD-CONFIRMED (adopted by Jacob at intake round 2 — pointer class, not parking lot):** a finding that is TRUE but already mandated by the spec under review, awaiting build. No spec delta; the finding converts to the build checklist. **Qualifying guard:** every BUILD-CONFIRMED entry must cite the specific build-order line (§-reference) or definition-of-done item that owns it — an entry that can't point to its owner doesn't qualify and must be classified ACCEPTED instead (the mandate it assumed is missing).
+
 **REJECT-WITH-REASON (log the push-back in the changelog; do not integrate):**
 1. **Substrate-before-evidence (META-01)** — architecture generalization before any evidence it's needed: multi-stage runtimes, anti-corruption layers, multi-dimensional stored decompositions, two-phase extraction splits. Where the reviewer's concern is real, log it as a POST-PILOT A/B EXPERIMENT with the metric that would decide it. *Precedent: blind-discovery split → SEED-AL experiment.* 
 2. **Model-trust dressed as control** — proposals that give an LLM's self-report authority (self-confidence into stored confidence, LLM judges as truth gates). Downgrade to telemetry.
 3. **Scope creep against the cut-line** — anything that adds v1 features beyond the master concept's IN list.
 
 ## Hard rules for the orchestrator
-- Every finding gets exactly one classification and appears in the round's punch-list: `ACCEPTED / CHEAP / DEFERRED / REJECTED (reason)`.
+- Every finding gets exactly one classification and appears in the round's punch-list: `ACCEPTED / CHEAP / DEFERRED / REJECTED (reason) / BUILD-CONFIRMED (owner cited) / STALE-ALREADY-FIXED`.
 - **Evidence-semantics edits are never CHEAP** *(added by Jacob after proposer round 2 — v1.2's C-4 "tidy normalization" inverted the gate's conservatism and severed the ignition supply while every unit test stayed green)*: any edit that alters evidence semantics (role, polarity, conferring, inference distance) is ACCEPT-NOW tier with its own failing-first test — including an end-to-end pipeline test where the semantics span wrapper and gate — or it doesn't happen.
 - Every ACCEPT that changes a shared type touches the canonical contract module and BOTH specs in the same commit.
 - **HARD RULE (tripwire fired — auto-adopted at the renderer-lens v1.3 diff verification, per the amendment's own text; no further discussion was required):** *"every grammar/behavior rule lands with its §-tests carrier in the same edit."* History: armed by Jacob after renderer-lens round 3 when the class occurred once post-warning; the v1.3 integration diff carried the class again (the render-side invalidation WHERE clause landed without its named test-6 carrier), so the rule adopted automatically.

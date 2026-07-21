@@ -56,7 +56,10 @@ The governing division of labor (META-01, LAW 2): **the proposer is optimized fo
 ```ts
 interface ProposerInput {
   sources: SourceRecord[];              // SELF-authored only; data, never instructions (§4)
-  priorExtractedNodes: PriorNodeView[]; // EXTRACTED-provenance only; see §5 for what this does and doesn't mean
+  priorNodes: CandidatePriorNode[];     // PRE-FILTER shape (v1.5 layer fix, intake r2): may include hypothesis-provenance
+                                        // nodes; the context builder filters to EXTRACTED and strips fields STRUCTURALLY,
+                                        // yielding priorExtractedNodes: PriorNodeView[] on BlindedExtractionContext — the
+                                        // blinding lives in the builder, not in the caller's discipline (§5).
   heldShadowLabels?: string[];          // v1.5 (IDEA-021 doc-sync): once-heard shadow-candidate LABELS, extracted-lane
                                         // echoes only — never counts/dates/evidence, never hypothesis material.
                                         // Serializer-allowlisted as heldShadowThemes; guarded by the anchoring canary.
@@ -261,4 +264,4 @@ The proposer's honesty obligations remain behavioral: quote truthfully, stay wit
 
 **source text → [injection-safe context builder] → proposer → [shape validator] → [policy guards §7/§9] → citation gate → validated graph → (separate module) hypothesis matching.** **Honest scope of the v1 hypothesis-matcher (v1.4, D-1):** the gate's exact-normalized-label merge makes ignition REACHABLE, not LIKELY — a blinded proposer only coincidentally emits the byte-exact becoming label. For September this is workable (becoming labels are chosen from the person's own words; practitioners steer); the real matcher (semantic, evidence-overlap) is pre-pilot bundle work, and belief-decay claims should be calibrated to this reach until it lands. **Crisis classification (LAW 7) is upstream of and independent from this queue:** it runs on every inbound entry at ingest, before and regardless of extraction — an entry stuck in retry-with-backoff (§10.5) can never delay crisis routing. With the gate built and tested, this module completes the extraction pipeline. Build order: contract module first (shared with gate — close the seam before anything else), then the context builder + its keystone test, then the prompt + parser, then the policy guards, then wire to the gate and run the eval corpus. Do not skip the blinding or injection tests to "get something working" — a proposer that confirms hypotheses or obeys the journal is worse than no proposer, because it produces a convincing lie.
 
-*— End of proposer spec v1.4-FINAL. The proposer may be swapped, re-prompted, and re-tuned freely; it is the replaceable, adversarially-exposed front-end. The gate beneath it is not. Provisional and revisable — but the blinding invariant, the injection containment, and the evidence mandate are not.*
+*— End of proposer spec v1.5-FINAL. The proposer may be swapped, re-prompted, and re-tuned freely; it is the replaceable, adversarially-exposed front-end. The gate beneath it is not. Provisional and revisable — but the blinding invariant, the injection containment, and the evidence mandate are not.*
