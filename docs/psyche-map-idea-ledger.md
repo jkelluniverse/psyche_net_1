@@ -460,6 +460,22 @@ Cross-model lane is preserved (the temperament split caught ~2x every round); th
 
 ---
 
+## IDEA-015 — The intake campaign closes the September spec triad: a system that suspects itself
+**Date:** 2026-07-21 · **Source:** REVIEW-01 loop, intake-spec v1.0→v1.3-FINAL (Jacob's naming directive at the stamp) · **Status:** Recorded — campaign record
+
+**The record, named:** three September-critical specs (citation gate + proposer v1.4-FINAL, renderer-lens v1.3-FINAL, intake v1.3-FINAL) have now passed through REVIEW-01, and **every one of them had its worst finding caught before build** — the conferring-rule starvation, the veil bypass class, and the intake triad below. None of these would have surfaced as anything but a production incident.
+
+**What makes the intake campaign the loop's proof:** all three rounds' worst findings were the *previous round's own repairs*. Round 1's worst: the spec's original becoming ceremony had no lane at all. Round 2's worst: the lane round 1 built to fix that skipped the crisis floor. Round 3's worst: the abort mechanism round 2 built to keep the beat's copy honest opened a fourth path to forged recurrence — and the diff verification then caught the round-3 repair's own composition defect (the reaper's unrepresentable branch) before the stamp. Four generations of fix, each audited by the next, each catch smaller than the last: **convergence by self-suspicion**, which is META-01's whole thesis applied to the loop itself.
+
+**Recurring antagonist, named:** forged recurrence (one utterance counting twice) attempted entry four ways — candidate-identity keys (IDEA-021 ruling, gate v1.8), pass overlap, source-creation double-tap, and the abort race — and was closed at a different structural layer each time. The materialization threshold is evidently the product's most attacked invariant; treat any future mechanism that touches pass lifecycle, source creation, or shadow identity as presumptively hostile to it and test accordingly.
+
+**Process artifacts the campaign minted (now charter law):** the FINAL-drift amendment (behavior-changing rulings doc-sync their FINAL specs in the same commit — founding precedent: `heldShadowLabels`); BUILD-CONFIRMED as a punch-list class (pointer, not parking lot — every entry cites its §9 owner); the escalation seat's precedent (surviving Critical *labels* come to Jacob even when reconciliation dissolves them — the human checks the dissolution).
+
+### Edges: IDEA-015 —closes→ the September spec triad; —proves→ IDEA-014 (the automated loop caught what it was built to catch, including its own repairs); —names→ forged recurrence as the standing adversary of the materialization threshold; —feeds→ the build phase (intake §9, tests first).
+### Seeds: **SEED-AR** — the intake build itself (spark fixtures before the first build commit; entry-point guard + watermark fix + carriers + writer door as the cannot-slip three). **SEED-AS** — post-build, re-read the 26% paraphrase tuning target (§7.1) with v4 passes accumulated.
+
+---
+
 ## NEW MODULES REGISTER
 | ID | Module | Born from | Status |
 |---|---|---|---|
@@ -492,4 +508,4 @@ Cross-model lane is preserved (the temperament split caught ~2x every round); th
 8. Demo scope for September (SEED-U): what is the minimum lovable prototype — INTAKE-01 + becoming nodes + basic sky + belief-decay view? What gets cut?
 9. PSYCH-K organization relationship: seek blessing/partnership, or stay quietly modality-agnostic? (Counsel + Jacob's read on the community politics.)
 
-*Next idea → IDEA-015.* · *(All future ideas evaluated under META-01; all specs pass REVIEW-01 before build; review findings sorted build-now vs pre-pilot-bundle.)*
+*Next idea → IDEA-016.* · *(All future ideas evaluated under META-01; all specs pass REVIEW-01 before build; review findings sorted build-now vs pre-pilot-bundle.)*
